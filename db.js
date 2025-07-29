@@ -26,6 +26,17 @@ const corePool = mysql.createPool({
   connectionLimit: 10,
 });
 
+// Pool für zentrale User-Verwaltung (User-DB)
+const userPool = mysql.createPool({
+  host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT),
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_USERS || "notes_users", // zentrale User-DB
+  waitForConnections: true,
+  connectionLimit: 5,
+});
+
 // Initialisierung: Core-Pool testen (optional)
 (async function testCoreConnection() {
   try {
@@ -38,4 +49,4 @@ const corePool = mysql.createPool({
   }
 })();
 
-export { corePool, guestPools };
+export { corePool, guestPools, userPool };

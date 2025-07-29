@@ -190,3 +190,14 @@ POST   /api/login      - Login (E-Mail, Passwort)
 POST   /api/logout     - Logout (Cookie löschen)
 ```
 
+## Zusammenfassung
+- Hinweise für User-Session und Gast-Session ergänzen.
+- Es gibt zwei Modi: Gast-Session (Cookie: guestId) und User-Session (Cookie: userId).
+- Bei User-Session: Jeder User hat eine eigene Datenbank, die bei Registrierung angelegt wird.
+- Bei Gast-Session: Jeder Gast bekommt eine temporäre Datenbank.
+- Die Middleware prüft zuerst auf userId, dann auf guestId.
+- Neue Endpunkte: /api/register, /api/login, /api/logout.
+- Passwörter werden mit bcrypt gehasht.
+- Die User-Tabelle liegt in einer zentralen Datenbank (notes_users).
+- Frontend bietet Login/Registrierung/Gaststart an.
+

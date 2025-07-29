@@ -5,8 +5,9 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { v4 as uuidv4 } from "uuid";
 import mysql from "mysql2/promise";
+import bcrypt from "bcrypt";
 
-import { corePool, guestPools } from "./db.js";
+import { corePool, guestPools, userPool } from "./db.js";
 
 const app = express();
 const HTTP_PORT = process.env.PORT || 3000;
@@ -22,9 +23,52 @@ app.use(
   })
 );
 
+// User-Tabelle anlegen (nur einmal beim Start)
+(async function ensureUserTable() {
+  await userPool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      password_hash VARCHAR(255) NOT NULL,
+      db_name VARCHAR(255) NOT NULL,
+      created BIGINT
+    );
+  `);
+})();
+
 // ================================================
 // Middleware: Gast-Datenbank auswählen/erstellen
 app.use(async (req, res, next) => {
+  // User-Session prüfen
+  if (req.cookies.userId) {
+    // User-DB auslesen
+    const [rows] = await userPool.query(
+      `SELECT db_name FROM users WHERE id = ?`,
+      [req.cookies.userId]
+    );
+    if (rows.length) {
+      const dbName = rows[0].db_name;
+      // Pool cachen
+      if (!guestPools[req.cookies.userId]) {
+        const pool = mysql.createPool({
+          host: process.env.DB_HOST,
+          port: Number(process.env.DB_PORT),
+          user: process.env.DB_USER,
+          password: process.env.DB_PASSWORD,
+          database: dbName,
+          waitForConnections: true,
+          connectionLimit: 5,
+        });
+        guestPools[req.cookies.userId] = pool;
+      }
+      req.pool = guestPools[req.cookies.userId];
+      return next();
+    }
+    // Fallback: User nicht gefunden → Cookie löschen
+    res.clearCookie("userId", { domain: ".dev2k.org", path: "/" });
+    return res.status(401).json({ error: "User-Session ungültig" });
+  }
+
   // 1. Guest-ID aus Cookie oder neu generieren
   let guestId = req.cookies.guestId;
   if (!guestId) {
@@ -187,6 +231,93 @@ app.delete("/api/todos/:id", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ==================== USER-REGISTRIERUNG ====================
+app.post("/api/register", async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password)
+    return res.status(400).json({ error: "Email und Passwort erforderlich" });
+
+  const password_hash = await bcrypt.hash(password, 10);
+  const dbName = `notes_user_${Buffer.from(email).toString("hex").slice(0, 24)}`;
+  const created = Date.now();
+
+  try {
+    // User anlegen
+    await userPool.query(
+      `INSERT INTO users (email, password_hash, db_name, created) VALUES (?, ?, ?, ?)`,
+      [email, password_hash, dbName, created]
+    );
+    // User-DB anlegen
+    await corePool.query(
+      `CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;`
+    );
+    // Tabelle in User-DB anlegen
+    const pool = mysql.createPool({
+      host: process.env.DB_HOST,
+      port: Number(process.env.DB_PORT),
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: dbName,
+      waitForConnections: true,
+      connectionLimit: 3,
+    });
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS todos (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT,
+        created BIGINT,
+        updated BIGINT,
+        completed TINYINT
+      );
+    `);
+    res.status(201).json({ message: "User registriert" });
+  } catch (err) {
+    if (err.code === "ER_DUP_ENTRY")
+      return res.status(409).json({ error: "Email bereits registriert" });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== USER-LOGIN ====================
+app.post("/api/login", async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password)
+    return res.status(400).json({ error: "Email und Passwort erforderlich" });
+
+  try {
+    const [rows] = await userPool.query(
+      `SELECT * FROM users WHERE email = ?`,
+      [email]
+    );
+    if (!rows.length)
+      return res.status(401).json({ error: "Ungültige Zugangsdaten" });
+    const user = rows[0];
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid)
+      return res.status(401).json({ error: "Ungültige Zugangsdaten" });
+
+    // Session-Cookie setzen
+    res.cookie("userId", user.id, {
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: "lax",
+      secure: true,
+      domain: ".dev2k.org",
+      path: "/",
+    });
+    res.json({ message: "Login erfolgreich" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== USER-LOGOUT ====================
+app.post("/api/logout", (req, res) => {
+  res.clearCookie("userId", { domain: ".dev2k.org", path: "/" });
+  res.json({ message: "Logout erfolgreich" });
 });
 
 // ==================== 404-FEHLERBEHANDLUNG ====================
