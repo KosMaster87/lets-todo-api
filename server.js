@@ -120,11 +120,6 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// ==================== BASISROUTE ====================
-app.get("/api", (req, res) => {
-  res.json({ message: "Willkommen bei deiner RESTful API!" });
-});
-
 // ==================== CRUD-Routen (nutzen req.pool) ====================
 app.get("/api/todos", async (req, res) => {
   try {
