@@ -17,7 +17,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(
   cors({
-    origin: ["app-restful-notes-user-session.dev2k.org"], // <--- Frontend-URL
+    origin: ["https://app-restful-notes-user-session.dev2k.org"], // <--- Frontend-URL (must include protocol)
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true, // Cookies und Authentifizierung erlauben
   })
