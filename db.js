@@ -3,7 +3,7 @@ import mysql from "mysql2/promise"; // Use the promise-based API
 import dotenv from "dotenv";
 dotenv.config(); // zieht PORT, DB_HOST, DB_PORT, usw. aus .env
 console.log("👉 Aktive DB_HOST:", process.env.DB_HOST);
-console.log("👉 Backend läuft für Domain: api-restful-guest-access.dev2k.org");
+console.log("👉 Backend läuft für Domain: api-restful-notes-user-session.dev2k.org");
 
 // Debug-Log: Zeige geladene DB-Konfiguration
 console.log("» Lese DB-Konfig aus env:", {

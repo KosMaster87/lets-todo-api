@@ -50,7 +50,7 @@ COOKIE_ID_STRATEGY: uuidv4  # UUIDv4 als Gast-Identifier
 ```javascript
 {
   "origin": [
-    "https://app-restful-guest-access.dev2k.org"
+    "https://app-restful-notes-user-session.dev2k.org"
   ],
   "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   "credentials": true
@@ -63,7 +63,7 @@ COOKIE_ID_STRATEGY: uuidv4  # UUIDv4 als Gast-Identifier
   httpOnly: true,
   secure: true,
   sameSite: "lax",
-  domain: "restful-guest-access.dev2k.space",
+  domain: ".dev2k.org",
   maxAge: 604800000,  // 7 Tage
   path: "/"
 }
