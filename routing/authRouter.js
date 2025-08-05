@@ -86,6 +86,10 @@ router.post("/login", async (req, res) => {
       domain: ".dev2k.org",
       path: "/",
     });
+    // Gast-Cookie löschen, falls vorhanden
+    if (req.cookies.guestId) {
+      res.clearCookie("guestId", { domain: ".dev2k.org", path: "/" });
+    }
     res.json({ message: "Login erfolgreich" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -95,6 +99,7 @@ router.post("/login", async (req, res) => {
 // Logout
 router.post("/logout", (req, res) => {
   res.clearCookie("userId", { domain: ".dev2k.org", path: "/" });
+  // guestId NICHT automatisch setzen!
   res.json({ message: "Logout erfolgreich" });
 });
 
