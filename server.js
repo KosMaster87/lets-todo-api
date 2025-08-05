@@ -47,7 +47,7 @@ app.use(async (req, res, next) => {
     );
     if (rows.length) {
       const dbName = rows[0].db_name;
-      // Pool für User-DB cachen (optional: eigenen Pool pro User)
+      // Pool für User-DB cachen (pro User)
       if (!guestPools[req.cookies.userId]) {
         const mysql = (await import("mysql2/promise")).default;
         guestPools[req.cookies.userId] = mysql.createPool({
@@ -67,18 +67,17 @@ app.use(async (req, res, next) => {
       }
       return next();
     }
+    // User nicht gefunden → Cookie löschen
     res.clearCookie("userId", { domain: ".dev2k.org", path: "/" });
     return res.status(401).json({ error: "User-Session ungültig" });
   }
   // 2. Gast-Session prüfen (req.pool wurde vom sessionRouter gesetzt)
   if (req.pool) return next();
   // 3. Keine Session vorhanden
-  return res
-    .status(401)
-    .json({
-      error:
-        "Keine Session initialisiert. Bitte als Gast starten oder einloggen.",
-    });
+  return res.status(401).json({
+    error:
+      "Keine Session initialisiert. Bitte als Gast starten oder einloggen.",
+  });
 });
 
 // CRUD-Routen für Todos
@@ -165,8 +164,9 @@ app.delete("/api/todos/:id", async (req, res) => {
     const [result] = await req.pool.query(`DELETE FROM todos WHERE id = ?`, [
       req.params.id,
     ]);
-    if (result.affectedRows === 0)
+    if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Todo nicht gefunden" });
+    }
     res.json({
       message: "Todo erfolgreich gelöscht",
       deletedId: req.params.id,
