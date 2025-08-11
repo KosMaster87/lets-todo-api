@@ -37,47 +37,67 @@ app.use(
 app.use("/api/session", sessionRouter);
 app.use("/api", authRouter);
 
-// Middleware: Pool-Auswahl (User-Session oder Gast-Session)
+// Middleware: Pool-Auswahl (User-Session oder Gast-Session) - VERBESSERT
 app.use(async (req, res, next) => {
-  // 1. User-Session prüfen
-  if (req.cookies.userId) {
-    const [rows] = await userPool.query(
-      `SELECT db_name FROM users WHERE id = ?`,
-      [req.cookies.userId]
-    );
-    if (rows.length) {
-      const dbName = rows[0].db_name;
-      // Pool für User-DB cachen (pro User)
-      if (!guestPools[req.cookies.userId]) {
-        const mysql = (await import("mysql2/promise")).default;
-        guestPools[req.cookies.userId] = mysql.createPool({
-          host: process.env.DB_HOST,
-          port: Number(process.env.DB_PORT),
-          user: process.env.DB_USER,
-          password: process.env.DB_PASSWORD,
-          database: dbName,
-          waitForConnections: true,
-          connectionLimit: 5,
-        });
+  try {
+    // STRIKTE TRENNUNG: User-Session hat Vorrang und schließt Gast aus
+    if (req.cookies.userId && !req.cookies.guestId) {
+      // 1. Nur User-Cookie vorhanden - korrekt
+      const [rows] = await userPool.query(
+        `SELECT db_name FROM users WHERE id = ?`,
+        [req.cookies.userId]
+      );
+      if (rows.length) {
+        const dbName = rows[0].db_name;
+        // Pool für User-DB cachen (pro User)
+        if (!guestPools[req.cookies.userId]) {
+          const mysql = (await import("mysql2/promise")).default;
+          guestPools[req.cookies.userId] = mysql.createPool({
+            host: process.env.DB_HOST,
+            port: Number(process.env.DB_PORT),
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD,
+            database: dbName,
+            waitForConnections: true,
+            connectionLimit: 5,
+          });
+        }
+        req.pool = guestPools[req.cookies.userId];
+        return next();
       }
-      req.pool = guestPools[req.cookies.userId];
-      // Gast-Cookie löschen, falls vorhanden
-      if (req.cookies.guestId) {
-        res.clearCookie("guestId", { domain: ".dev2k.org", path: "/" });
-      }
-      return next();
+      // User nicht gefunden → Cookie löschen
+      res.clearCookie("userId", { domain: ".dev2k.org", path: "/" });
+      return res.status(401).json({ error: "User-Session ungültig" });
     }
-    // User nicht gefunden → Cookie löschen
-    res.clearCookie("userId", { domain: ".dev2k.org", path: "/" });
-    return res.status(401).json({ error: "User-Session ungültig" });
+    
+    // 2. Sowohl User- als auch Gast-Cookie vorhanden - FEHLERFALL
+    if (req.cookies.userId && req.cookies.guestId) {
+      res.clearCookie("guestId", { domain: ".dev2k.org", path: "/" });
+      console.warn("⚠️ Beide Cookies vorhanden - Gast-Cookie gelöscht");
+      // User-Session fortsetzen (rekursiver Aufruf)
+      return this(req, res, next);
+    }
+    
+    // 3. Nur Gast-Session vorhanden
+    if (req.cookies.guestId && !req.cookies.userId) {
+      const guestId = req.cookies.guestId;
+      if (guestPools[guestId]) {
+        req.pool = guestPools[guestId];
+        return next();
+      }
+      // Pool nicht vorhanden - Session ungültig
+      res.clearCookie("guestId", { domain: ".dev2k.org", path: "/" });
+      return res.status(401).json({ error: "Gast-Session ungültig" });
+    }
+    
+    // 4. Keine Session vorhanden
+    return res.status(401).json({
+      error: "Keine Session initialisiert. Bitte als Gast starten oder einloggen.",
+    });
+  } catch (err) {
+    console.error("Middleware-Fehler:", err);
+    res.status(500).json({ error: "Server-Fehler bei Session-Prüfung" });
   }
-  // 2. Gast-Session prüfen (req.pool wurde vom sessionRouter gesetzt)
-  if (req.pool) return next();
-  // 3. Keine Session vorhanden
-  return res.status(401).json({
-    error:
-      "Keine Session initialisiert. Bitte als Gast starten oder einloggen.",
-  });
 });
 
 // CRUD-Routen für Todos

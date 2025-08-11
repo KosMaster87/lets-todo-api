@@ -77,20 +77,22 @@ router.post("/login", async (req, res) => {
     if (!valid)
       return res.status(401).json({ error: "Ungültige Zugangsdaten" });
 
-    // Session-Cookie setzen
+    // Gast-Cookie ZUERST löschen
+    if (req.cookies.guestId) {
+      res.clearCookie("guestId", { domain: ".dev2k.org", path: "/" });
+    }
+
+    // Session-Cookie setzen - PERSISTENT für 7 Tage
     res.cookie("userId", user.id, {
       httpOnly: true,
       secure: true,
       sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 Tage persistent
       domain: ".dev2k.org",
       path: "/",
     });
-    // Gast-Cookie löschen, falls vorhanden
-    if (req.cookies.guestId) {
-      res.clearCookie("guestId", { domain: ".dev2k.org", path: "/" });
-    }
-    res.json({ message: "Login erfolgreich" });
+    
+    res.json({ message: "Login erfolgreich", userId: user.id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
