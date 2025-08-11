@@ -82,16 +82,16 @@ router.post("/login", async (req, res) => {
       res.clearCookie("guestId", { domain: ".dev2k.org", path: "/" });
     }
 
-    // Session-Cookie setzen - PERSISTENT für 7 Tage
+    // Session-Cookie setzen - HTTPONLY TEMPORÄR DEAKTIVIERT FÜR DEBUG
     res.cookie("userId", user.id, {
-      httpOnly: true,
+      httpOnly: false, // TEMPORÄR für Debug
       secure: true,
       sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 Tage persistent
+      maxAge: 7 * 24 * 60 * 60 * 1000,
       domain: ".dev2k.org",
       path: "/",
     });
-    
+
     res.json({ message: "Login erfolgreich", userId: user.id });
   } catch (err) {
     res.status(500).json({ error: err.message });
