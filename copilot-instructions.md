@@ -1,6 +1,6 @@
 <!-- copilot-instructions.md -->
 
-# Copilot Instructions für dieses Projekt
+# Copilot Instructions für das Backend (todoApp.js)
 
 ## Allgemeine Vorgaben
 - Schreibe alle Kommentare und Fehlermeldungen auf Deutsch.
