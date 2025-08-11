@@ -1,9 +1,17 @@
+/**
+ * Express-Server für Todo-App mit User- und Gast-Session-Management
+ * Features:
+ * - Separate Datenbank pro User/Gast
+ * - Cookie-basierte Authentifizierung
+ * - RESTful Todo-API
+ */
+
 // server.js
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
-import { corePool, guestPools, userPool } from "./db.js";
+import { guestPools, userPool } from "./db.js";
 import authRouter from "./routing/authRouter.js";
 import sessionRouter from "./routing/sessionRouter.js";
 
@@ -37,20 +45,28 @@ app.use(
 app.use("/api/session", sessionRouter);
 app.use("/api", authRouter);
 
-// Middleware: Pool-Auswahl (User-Session oder Gast-Session) - KORRIGIERT
+/**
+ * Middleware: Pool-Auswahl basierend auf Session-Typ
+ * Priorisiert User-Session vor Gast-Session
+ * Setzt req.pool für nachfolgende Route-Handler
+ * @param {Request} req - Express Request Object
+ * @param {Response} res - Express Response Object
+ * @param {Function} next - Next Middleware Function
+ */
 app.use(async (req, res, next) => {
   try {
     // STRIKTE TRENNUNG: User-Session hat Vorrang und schließt Gast aus
     if (req.cookies.userId && !req.cookies.guestId) {
-      // 1. Nur User-Cookie vorhanden - korrekt
+      // 1. User-Session: Pool für User-DB bereitstellen
       const [rows] = await userPool.query(
         `SELECT db_name FROM users WHERE id = ?`,
         [req.cookies.userId]
       );
       if (rows.length) {
         const dbName = rows[0].db_name;
-        // Pool für User-DB cachen (pro User) - KORRIGIERT: userId als String verwenden
         const userPoolKey = `user_${req.cookies.userId}`;
+
+        // Pool cachen für Performance
         if (!guestPools[userPoolKey]) {
           const mysql = (await import("mysql2/promise")).default;
           guestPools[userPoolKey] = mysql.createPool({
@@ -66,34 +82,34 @@ app.use(async (req, res, next) => {
         req.pool = guestPools[userPoolKey];
         return next();
       }
-      // User nicht gefunden → Cookie löschen
+      // User nicht in DB gefunden → Cookie ungültig
       res.clearCookie("userId", { domain: ".dev2k.org", path: "/" });
       return res.status(401).json({ error: "User-Session ungültig" });
     }
-    
-    // 2. Sowohl User- als auch Gast-Cookie vorhanden - FEHLERFALL - KORRIGIERT
+
+    // 2. Konflikt: Beide Cookies vorhanden → Gast löschen
     if (req.cookies.userId && req.cookies.guestId) {
       res.clearCookie("guestId", { domain: ".dev2k.org", path: "/" });
       console.warn("⚠️ Beide Cookies vorhanden - Gast-Cookie gelöscht");
-      // Middleware erneut durchlaufen - KORRIGIERT: Funktion direkt aufrufen
       return app._router.handle(req, res, next);
     }
-    
-    // 3. Nur Gast-Session vorhanden
+
+    // 3. Gast-Session: Pool für Gast-DB bereitstellen
     if (req.cookies.guestId && !req.cookies.userId) {
       const guestId = req.cookies.guestId;
       if (guestPools[guestId]) {
         req.pool = guestPools[guestId];
         return next();
       }
-      // Pool nicht vorhanden - Session ungültig
+      // Gast-Pool existiert nicht → Session ungültig
       res.clearCookie("guestId", { domain: ".dev2k.org", path: "/" });
       return res.status(401).json({ error: "Gast-Session ungültig" });
     }
-    
-    // 4. Keine Session vorhanden
+
+    // 4. Keine Session: Authentifizierung erforderlich
     return res.status(401).json({
-      error: "Keine Session initialisiert. Bitte als Gast starten oder einloggen.",
+      error:
+        "Keine Session initialisiert. Bitte als Gast starten oder einloggen.",
     });
   } catch (err) {
     console.error("Middleware-Fehler:", err);
@@ -102,6 +118,11 @@ app.use(async (req, res, next) => {
 });
 
 // CRUD-Routen für Todos
+
+/**
+ * GET /api/todos - Alle Todos des aktuellen Users/Gasts abrufen
+ * Sortierung: Unerledigte zuerst, dann nach Update-Zeit
+ */
 app.get("/api/todos", async (req, res) => {
   try {
     const [rows] = await req.pool.query(
@@ -113,6 +134,10 @@ app.get("/api/todos", async (req, res) => {
   }
 });
 
+/**
+ * GET /api/todos/:id - Einzelnes Todo abrufen
+ * @param {string} req.params.id - Todo-ID
+ */
 app.get("/api/todos/:id", async (req, res) => {
   try {
     const [rows] = await req.pool.query(`SELECT * FROM todos WHERE id = ?`, [
@@ -126,6 +151,13 @@ app.get("/api/todos/:id", async (req, res) => {
   }
 });
 
+/**
+ * POST /api/todos - Neues Todo erstellen
+ * @param {Object} req.body - Todo-Daten
+ * @param {string} req.body.title - Todo-Titel (erforderlich)
+ * @param {string} [req.body.description] - Todo-Beschreibung
+ * @param {number} [req.body.completed] - Erledigt-Status (0/1)
+ */
 app.post("/api/todos", async (req, res) => {
   const { title, description = "", completed = 0 } = req.body;
   const timestamp = Date.now();
@@ -148,6 +180,12 @@ app.post("/api/todos", async (req, res) => {
   }
 });
 
+/**
+ * PATCH /api/todos/:id - Todo teilweise aktualisieren
+ * Unterstützt partielle Updates mit COALESCE-Strategie
+ * @param {string} req.params.id - Todo-ID
+ * @param {Object} req.body - Update-Daten (title, description, completed)
+ */
 app.patch("/api/todos/:id", async (req, res) => {
   const { title, description, completed } = req.body;
   const updates = [],
@@ -180,6 +218,10 @@ app.patch("/api/todos/:id", async (req, res) => {
   }
 });
 
+/**
+ * DELETE /api/todos/:id - Todo löschen
+ * @param {string} req.params.id - Todo-ID
+ */
 app.delete("/api/todos/:id", async (req, res) => {
   try {
     const [result] = await req.pool.query(`DELETE FROM todos WHERE id = ?`, [
@@ -197,12 +239,17 @@ app.delete("/api/todos/:id", async (req, res) => {
   }
 });
 
-// 404-Fallback
+/**
+ * 404-Fallback für unbekannte Routen
+ */
 app.use((req, res) => {
   res.status(404).json({ message: "Route nicht gefunden" });
 });
 
-// Server starten
+/**
+ * Server starten und auf eingehende Verbindungen hören
+ * Bindet an alle verfügbaren Netzwerk-Interfaces (0.0.0.0)
+ */
 app.listen(HTTP_PORT, "0.0.0.0", () => {
   console.log(`✅ Server läuft auf Port ${HTTP_PORT}`);
 });

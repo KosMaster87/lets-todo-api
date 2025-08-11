@@ -1,3 +1,9 @@
+/**
+ * Session-Management Router
+ * Verwaltet Gast-Sessions und Session-Validierung
+ * Jeder Gast erhält eine temporäre UUID-basierte Datenbank
+ */
+
 // routing/sessionRouter.js
 import { Router } from "express";
 import { v4 as uuidv4 } from "uuid";
@@ -6,10 +12,14 @@ import mysql from "mysql2/promise";
 
 const router = Router();
 
-// Gast-Session anlegen / zurückgeben - ÄNDERUNG ZU POST
+/**
+ * POST /api/session/guest - Neue Gast-Session starten
+ * Erstellt UUID, Datenbank und Todos-Tabelle für Gast
+ * @returns {Object} { guestId: string, message: string }
+ */
 router.post("/guest", async (req, res, next) => {
   try {
-    // 1) Guest-ID aus Cookie oder neu generieren
+    // 1) Guest-ID generieren oder aus Cookie lesen
     let guestId = req.cookies.guestId;
     if (!guestId) {
       guestId = uuidv4();
@@ -18,26 +28,24 @@ router.post("/guest", async (req, res, next) => {
         secure: true,
         sameSite: "lax",
         maxAge: 7 * 24 * 60 * 60 * 1000,
-        domain: ".dev2k.org", // KORRIGIERT: Gemeinsame Parent-Domain
+        domain: ".dev2k.org",
         path: "/",
       });
     }
     
-    // Sicherstellen, dass KEINE userId gesetzt wird
+    // Sicherstellen: keine User-Session gleichzeitig
     if (req.cookies.userId) {
       res.clearCookie("userId", { domain: ".dev2k.org", path: "/" });
     }
     
-    // 2) DB-Name ableiten
+    // 2) Gast-Datenbank erstellen
     const dbName = `notes_guest_${guestId.replace(/-/g, "")}`;
-    
-    // 3) Datenbank anlegen
     await corePool.query(
       `CREATE DATABASE IF NOT EXISTS \`${dbName}\`
        CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;`
     );
     
-    // 4) Pool und Tabelle provisionieren
+    // 3) Connection Pool für Gast-DB einrichten
     if (!guestPools[guestId]) {
       const pool = mysql.createPool({
         host: process.env.DB_HOST,
@@ -48,6 +56,8 @@ router.post("/guest", async (req, res, next) => {
         waitForConnections: true,
         connectionLimit: 5,
       });
+      
+      // Todos-Tabelle initialisieren
       await pool.query(`
         CREATE TABLE IF NOT EXISTS todos (
           id INT AUTO_INCREMENT PRIMARY KEY,
@@ -61,7 +71,6 @@ router.post("/guest", async (req, res, next) => {
       guestPools[guestId] = pool;
     }
     
-    // 5) Pool injizieren und Antwort
     req.pool = guestPools[guestId];
     res.json({ guestId, message: "Gast-Session aktiv" });
   } catch (err) {
@@ -69,7 +78,11 @@ router.post("/guest", async (req, res, next) => {
   }
 });
 
-// Session-Validierung - NEU
+/**
+ * GET /api/session/validate - Aktuelle Session validieren
+ * Prüft User- oder Gast-Session und gibt Status zurück
+ * @returns {Object} { valid: boolean, type?: string, userId?: number, email?: string, guestId?: string }
+ */
 router.get("/validate", async (req, res) => {
   try {
     // User-Session prüfen
@@ -119,7 +132,11 @@ router.get("/validate", async (req, res) => {
   }
 });
 
-// Gast-Session beenden - NEU
+/**
+ * POST /api/session/guest/end - Gast-Session beenden
+ * Löscht Pool, Datenbank und Cookie
+ * ACHTUNG: Alle Gast-Daten gehen verloren!
+ */
 router.post("/guest/end", async (req, res) => {
   try {
     const guestId = req.cookies.guestId;

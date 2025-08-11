@@ -1,22 +1,28 @@
+/**
+ * Datenbankverbindungs-Management für Todo-App
+ * Verwaltet drei verschiedene Pool-Typen:
+ * - Core-Pool: Für DDL-Operationen (DB-Erstellung)
+ * - User-Pool: Zentrale User-Verwaltung
+ * - Guest-Pools: Dynamische Pools pro Gast-Session
+ */
+
 //  db.js
-import mysql from "mysql2/promise"; // Use the promise-based API
+import mysql from "mysql2/promise";
 import dotenv from "dotenv";
 dotenv.config(); // zieht PORT, DB_HOST, DB_PORT, usw. aus .env
-console.log("👉 Aktive DB_HOST:", process.env.DB_HOST);
-console.log("👉 Backend läuft für Domain: api-restful-notes-user-session.dev2k.org");
 
-// Debug-Log: Zeige geladene DB-Konfiguration
-console.log("» Lese DB-Konfig aus env:", {
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  user: process.env.DB_USER,
-  database: process.env.DB_NAME,
-});
-
-// Map zum Speichern der Pools pro Guest-ID
+/**
+ * Map zum Speichern der Connection-Pools pro Guest-ID oder User-ID
+ * Struktur: { "guestId": pool, "user_123": pool }
+ * @type {Object<string, mysql.Pool>}
+ */
 const guestPools = {};
 
-// Pool für Verwaltung aller Guest‑DBs (CORE‑Pool ohne Datenbank)
+/**
+ * Core-Pool für DDL-Operationen (Data Definition Language) | Datenbank-Erstellung/Löschung
+ * Verbindet sich OHNE spezifische Datenbank
+ * @type {mysql.Pool}
+ */
 const corePool = mysql.createPool({
   host: process.env.DB_HOST,
   port: Number(process.env.DB_PORT),
@@ -26,7 +32,11 @@ const corePool = mysql.createPool({
   connectionLimit: 10,
 });
 
-// Pool für zentrale User-Verwaltung (User-DB)
+/**
+ * Pool für zentrale User-Verwaltung
+ * Verbindet sich mit der notes_users Datenbank
+ * @type {mysql.Pool}
+ */
 const userPool = mysql.createPool({
   host: process.env.DB_HOST,
   port: Number(process.env.DB_PORT),
@@ -37,7 +47,12 @@ const userPool = mysql.createPool({
   connectionLimit: 5,
 });
 
-// Initialisierung: Core-Pool testen (optional)
+/**
+ * Testet die Core-Pool Verbindung beim App-Start
+ * Beendet den Prozess bei Verbindungsfehlern
+ * @async
+ * @function testCoreConnection
+ */
 (async function testCoreConnection() {
   try {
     const conn = await corePool.getConnection();

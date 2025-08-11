@@ -1,3 +1,9 @@
+/**
+ * Authentifizierungs-Router
+ * Verwaltet User-Registrierung, Login und Logout
+ * Jeder User erhält eine eigene Datenbank
+ */
+
 // routing/authRouter.js
 import { Router } from "express";
 import bcrypt from "bcrypt";
@@ -6,32 +12,42 @@ import mysql from "mysql2/promise";
 
 const router = Router();
 
-// Registrierung
+/**
+ * POST /api/register - Neuen User registrieren
+ * Erstellt automatisch eine eigene Datenbank für den User
+ * @param {Object} req.body - Registrierungsdaten
+ * @param {string} req.body.email - E-Mail-Adresse
+ * @param {string} req.body.password - Passwort (wird gehasht)
+ */
 router.post("/register", async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)
     return res.status(400).json({ error: "Email und Passwort erforderlich" });
 
+  // Passwort hashen für sichere Speicherung
   const password_hash = await bcrypt.hash(password, 10);
-  // DB-Name auf Basis der Email (hex, auf 24 Zeichen gekürzt)
+  
+  // Eindeutiger DB-Name basierend auf E-Mail
   const dbName = `notes_user_${Buffer.from(email)
     .toString("hex")
     .slice(0, 24)}`;
   const created = Date.now();
 
   try {
-    // 1) User in Zentrale anlegen
+    // 1) User in zentrale User-Tabelle eintragen
     await userPool.query(
       `INSERT INTO users (email, password_hash, db_name, created)
        VALUES (?, ?, ?, ?)`,
       [email, password_hash, dbName, created]
     );
-    // 2) Benutzer-DB erstellen
+    
+    // 2) Dedicated User-Datenbank erstellen
     await corePool.query(
       `CREATE DATABASE IF NOT EXISTS \`${dbName}\`
        CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;`
     );
-    // 3) Todos-Tabelle in Benutzer-DB anlegen
+    
+    // 3) Todos-Tabelle in User-DB initialisieren
     const pool = mysql.createPool({
       host: process.env.DB_HOST,
       port: Number(process.env.DB_PORT),
@@ -51,6 +67,7 @@ router.post("/register", async (req, res) => {
         completed TINYINT
       );
     `);
+    
     res.status(201).json({ message: "User registriert" });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY")
@@ -59,7 +76,13 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// Login
+/**
+ * POST /api/login - User einloggen
+ * Setzt httpOnly Cookie für Session-Management
+ * @param {Object} req.body - Login-Daten
+ * @param {string} req.body.email - E-Mail-Adresse
+ * @param {string} req.body.password - Passwort
+ */
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)
@@ -98,7 +121,10 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// Logout
+/**
+ * POST /api/logout - User ausloggen
+ * Löscht das userId Cookie
+ */
 router.post("/logout", (req, res) => {
   res.clearCookie("userId", { domain: ".dev2k.org", path: "/" });
   // guestId NICHT automatisch setzen!
