@@ -37,7 +37,7 @@ app.use(
 app.use("/api/session", sessionRouter);
 app.use("/api", authRouter);
 
-// Middleware: Pool-Auswahl (User-Session oder Gast-Session) - VERBESSERT
+// Middleware: Pool-Auswahl (User-Session oder Gast-Session) - KORRIGIERT
 app.use(async (req, res, next) => {
   try {
     // STRIKTE TRENNUNG: User-Session hat Vorrang und schließt Gast aus
@@ -49,10 +49,11 @@ app.use(async (req, res, next) => {
       );
       if (rows.length) {
         const dbName = rows[0].db_name;
-        // Pool für User-DB cachen (pro User)
-        if (!guestPools[req.cookies.userId]) {
+        // Pool für User-DB cachen (pro User) - KORRIGIERT: userId als String verwenden
+        const userPoolKey = `user_${req.cookies.userId}`;
+        if (!guestPools[userPoolKey]) {
           const mysql = (await import("mysql2/promise")).default;
-          guestPools[req.cookies.userId] = mysql.createPool({
+          guestPools[userPoolKey] = mysql.createPool({
             host: process.env.DB_HOST,
             port: Number(process.env.DB_PORT),
             user: process.env.DB_USER,
@@ -62,7 +63,7 @@ app.use(async (req, res, next) => {
             connectionLimit: 5,
           });
         }
-        req.pool = guestPools[req.cookies.userId];
+        req.pool = guestPools[userPoolKey];
         return next();
       }
       // User nicht gefunden → Cookie löschen
@@ -70,12 +71,12 @@ app.use(async (req, res, next) => {
       return res.status(401).json({ error: "User-Session ungültig" });
     }
     
-    // 2. Sowohl User- als auch Gast-Cookie vorhanden - FEHLERFALL
+    // 2. Sowohl User- als auch Gast-Cookie vorhanden - FEHLERFALL - KORRIGIERT
     if (req.cookies.userId && req.cookies.guestId) {
       res.clearCookie("guestId", { domain: ".dev2k.org", path: "/" });
       console.warn("⚠️ Beide Cookies vorhanden - Gast-Cookie gelöscht");
-      // User-Session fortsetzen (rekursiver Aufruf)
-      return this(req, res, next);
+      // Middleware erneut durchlaufen - KORRIGIERT: Funktion direkt aufrufen
+      return app._router.handle(req, res, next);
     }
     
     // 3. Nur Gast-Session vorhanden

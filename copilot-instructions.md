@@ -190,6 +190,18 @@ POST   /api/login      - Login (E-Mail, Passwort)
 POST   /api/logout     - Logout (Cookie löschen)
 ```
 
+## Session-Endpunkte
+```javascript
+GET    /api/session/validate     - Session-Gültigkeit prüfen
+POST   /api/session/guest        - Gast-Session starten
+POST   /api/session/guest/end    - Gast-Session beenden
+```
+
+## Cookie-Domains
+- Alle Cookies: `domain: ".dev2k.org"`
+- Frontend: `app-restful-notes-user-session.dev2k.org`
+- Backend: `api-restful-notes-user-session.dev2k.org`
+
 ## Zusammenfassung
 - Hinweise für User-Session und Gast-Session ergänzen.
 - Es gibt zwei Modi: Gast-Session (Cookie: guestId) und User-Session (Cookie: userId).
