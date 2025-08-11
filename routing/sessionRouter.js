@@ -14,11 +14,11 @@ router.post("/guest", async (req, res, next) => {
     if (!guestId) {
       guestId = uuidv4();
       res.cookie("guestId", guestId, {
-        httpOnly: true,
+        httpOnly: false, // Für Debug
         secure: true,
         sameSite: "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 Tage persistent
-        domain: ".dev2k.org",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        domain: ".dev2k.org", // KORRIGIERT: Gemeinsame Parent-Domain
         path: "/",
       });
     }

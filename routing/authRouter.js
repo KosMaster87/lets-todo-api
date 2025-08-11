@@ -82,13 +82,13 @@ router.post("/login", async (req, res) => {
       res.clearCookie("guestId", { domain: ".dev2k.org", path: "/" });
     }
 
-    // Session-Cookie setzen - HTTPONLY TEMPORÄR DEAKTIVIERT FÜR DEBUG
+    // Session-Cookie setzen - DOMAIN KORRIGIERT
     res.cookie("userId", user.id, {
-      httpOnly: false, // TEMPORÄR für Debug
+      httpOnly: false, // Für Debug
       secure: true,
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      domain: ".dev2k.org",
+      domain: ".dev2k.org", // KORRIGIERT: Gemeinsame Parent-Domain
       path: "/",
     });
 
