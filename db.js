@@ -19,6 +19,13 @@ dotenv.config(); // zieht PORT, DB_HOST, DB_PORT, usw. aus .env
 const guestPools = {};
 
 /**
+ * Map zum Speichern der Connection-Pools pro User-ID
+ * Struktur: { "user_123": pool }
+ * @type {Object<string, mysql.Pool>}
+ */
+const userPools = {};
+
+/**
  * Core-Pool für DDL-Operationen (Data Definition Language) | Datenbank-Erstellung/Löschung
  * Verbindet sich OHNE spezifische Datenbank
  * @type {mysql.Pool}
@@ -59,18 +66,20 @@ const userPool = mysql.createPool({
     // Eine Verbindung aus dem Pool holen (testet DB-Erreichbarkeit)
     const conn = await corePool.getConnection();
     console.log("✅ Core-Pool verbunden mit MariaDB (DDL-Pool)");
-    
+
     // WICHTIG: Verbindung zurück in den Pool geben
     // Ohne release() wäre diese Verbindung permanent "blockiert"
     conn.release();
   } catch (err) {
     console.error("❌ Core-Pool Verbindungsfehler:", err.message);
-    console.error("💡 Prüfen Sie: DB läuft? Zugangsdaten korrekt? Netzwerk ok?");
-    
+    console.error(
+      "💡 Prüfen Sie: DB läuft? Zugangsdaten korrekt? Netzwerk ok?"
+    );
+
     // Fail-Fast: App beenden statt fehlerhaft zu starten
     // PM2 startet die App automatisch neu, wenn DB wieder verfügbar
     process.exit(1);
   }
 })();
 
-export { corePool, guestPools, userPool };
+export { corePool, guestPools, userPool, userPools };

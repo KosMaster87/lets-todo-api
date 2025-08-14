@@ -7,7 +7,7 @@
 // routing/sessionRouter.js
 import { Router } from "express";
 import { v4 as uuidv4 } from "uuid";
-import { corePool, guestPools } from "../db.js";
+import { corePool, guestPools, userPool } from "../db.js";
 import mysql from "mysql2/promise";
 
 const router = Router();
@@ -32,19 +32,19 @@ router.post("/guest", async (req, res, next) => {
         path: "/",
       });
     }
-    
+
     // Sicherstellen: keine User-Session gleichzeitig
     if (req.cookies.userId) {
       res.clearCookie("userId", { domain: ".dev2k.org", path: "/" });
     }
-    
+
     // 2) Gast-Datenbank erstellen
     const dbName = `notes_guest_${guestId.replace(/-/g, "")}`;
     await corePool.query(
       `CREATE DATABASE IF NOT EXISTS \`${dbName}\`
        CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;`
     );
-    
+
     // 3) Connection Pool für Gast-DB einrichten
     if (!guestPools[guestId]) {
       const pool = mysql.createPool({
@@ -56,7 +56,7 @@ router.post("/guest", async (req, res, next) => {
         waitForConnections: true,
         connectionLimit: 5,
       });
-      
+
       // Todos-Tabelle initialisieren
       await pool.query(`
         CREATE TABLE IF NOT EXISTS todos (
@@ -70,7 +70,7 @@ router.post("/guest", async (req, res, next) => {
       `);
       guestPools[guestId] = pool;
     }
-    
+
     req.pool = guestPools[guestId];
     res.json({ guestId, message: "Gast-Session aktiv" });
   } catch (err) {
@@ -87,15 +87,16 @@ router.get("/validate", async (req, res) => {
   try {
     // User-Session prüfen
     if (req.cookies.userId) {
-      const [rows] = await import("../db.js").then(db => 
-        db.userPool.query(`SELECT id, email FROM users WHERE id = ?`, [req.cookies.userId])
+      const [rows] = await userPool.query(
+        `SELECT id, email FROM users WHERE id = ?`,
+        [req.cookies.userId]
       );
       if (rows.length) {
-        return res.json({ 
-          type: "user", 
-          userId: rows[0].id, 
+        return res.json({
+          type: "user",
+          userId: rows[0].id,
           email: rows[0].email,
-          valid: true 
+          valid: true,
         });
       } else {
         // User nicht gefunden - Cookie löschen
@@ -103,19 +104,19 @@ router.get("/validate", async (req, res) => {
         return res.status(401).json({ error: "User-Session ungültig" });
       }
     }
-    
+
     // Gast-Session prüfen
     if (req.cookies.guestId) {
       const guestId = req.cookies.guestId;
       const dbName = `notes_guest_${guestId.replace(/-/g, "")}`;
-      
+
       // Prüfen ob Gast-DB existiert
       const [dbRows] = await corePool.query(`SHOW DATABASES LIKE '${dbName}'`);
       if (dbRows.length) {
-        return res.json({ 
-          type: "guest", 
+        return res.json({
+          type: "guest",
           guestId: guestId,
-          valid: true 
+          valid: true,
         });
       } else {
         // Gast-DB nicht gefunden - Cookie löschen
@@ -123,7 +124,7 @@ router.get("/validate", async (req, res) => {
         return res.status(401).json({ error: "Gast-Session ungültig" });
       }
     }
-    
+
     // Keine Session vorhanden
     return res.json({ valid: false, message: "Keine aktive Session" });
   } catch (err) {
@@ -143,20 +144,20 @@ router.post("/guest/end", async (req, res) => {
     if (!guestId) {
       return res.status(400).json({ error: "Keine Gast-Session aktiv" });
     }
-    
+
     // Pool schließen falls vorhanden
     if (guestPools[guestId]) {
       await guestPools[guestId].end();
       delete guestPools[guestId];
     }
-    
+
     // Optional: Gast-Datenbank löschen (nach Bestätigung)
     const dbName = `notes_guest_${guestId.replace(/-/g, "")}`;
     await corePool.query(`DROP DATABASE IF EXISTS \`${dbName}\``);
-    
+
     // Cookie löschen
     res.clearCookie("guestId", { domain: ".dev2k.org", path: "/" });
-    
+
     res.json({ message: "Gast-Session beendet und Daten gelöscht" });
   } catch (err) {
     console.error("Fehler beim Beenden der Gast-Session:", err);

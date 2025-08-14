@@ -11,9 +11,10 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
-import { guestPools, userPool } from "./db.js";
+import { corePool, guestPools, userPool, userPools } from "./db.js";
 import authRouter from "./routing/authRouter.js";
 import sessionRouter from "./routing/sessionRouter.js";
+import mysql from "mysql2/promise";
 
 const app = express();
 const HTTP_PORT = process.env.PORT || 3000;
@@ -118,6 +119,90 @@ app.use(async (req, res, next) => {
 });
 
 /**
+ * Middleware: Database Pool Assignment
+ * Weist jedem Request den korrekten DB-Pool zu (User oder Gast)
+ */
+app.use(async (req, res, next) => {
+  try {
+    // 1) User-Session prüfen (hat Vorrang)
+    if (req.cookies.userId) {
+      const userId = req.cookies.userId;
+      const poolKey = `user_${userId}`;
+
+      if (userPools[poolKey]) {
+        req.pool = userPools[poolKey];
+        return next();
+      }
+
+      // Pool nicht vorhanden - aus DB rekonstruieren
+      const [userRows] = await userPool.query(
+        `SELECT db_name FROM users WHERE id = ?`,
+        [userId]
+      );
+
+      if (userRows.length) {
+        const dbName = userRows[0].db_name;
+        const pool = mysql.createPool({
+          host: process.env.DB_HOST,
+          port: Number(process.env.DB_PORT),
+          user: process.env.DB_USER,
+          password: process.env.DB_PASSWORD,
+          database: dbName,
+          waitForConnections: true,
+          connectionLimit: 5,
+        });
+
+        userPools[poolKey] = pool;
+        req.pool = pool;
+        return next();
+      }
+
+      // User nicht gefunden - Cookie löschen
+      res.clearCookie("userId", { domain: ".dev2k.org", path: "/" });
+    }
+
+    // 2) Gast-Session prüfen
+    if (req.cookies.guestId) {
+      const guestId = req.cookies.guestId;
+
+      if (guestPools[guestId]) {
+        req.pool = guestPools[guestId];
+        return next();
+      }
+
+      // Gast-Pool rekonstruieren
+      const dbName = `notes_guest_${guestId.replace(/-/g, "")}`;
+      const [dbRows] = await corePool.query(`SHOW DATABASES LIKE '${dbName}'`);
+
+      if (dbRows.length) {
+        const pool = mysql.createPool({
+          host: process.env.DB_HOST,
+          port: Number(process.env.DB_PORT),
+          user: process.env.DB_USER,
+          password: process.env.DB_PASSWORD,
+          database: dbName,
+          waitForConnections: true,
+          connectionLimit: 5,
+        });
+
+        guestPools[guestId] = pool;
+        req.pool = pool;
+        return next();
+      }
+
+      // Gast-DB nicht gefunden - Cookie löschen
+      res.clearCookie("guestId", { domain: ".dev2k.org", path: "/" });
+    }
+
+    // 3) Keine gültige Session - Request ohne Pool fortsetzen
+    next();
+  } catch (err) {
+    console.error("Pool-Assignment Fehler:", err);
+    next();
+  }
+});
+
+/**
  * GET /api/todos - Alle Todos des aktuellen Users/Gasts abrufen
  * Sortierung: Unerledigte zuerst, dann nach Update-Zeit
  */
@@ -181,25 +266,25 @@ app.post("/api/todos", async (req, res) => {
 /**
  * PATCH /api/todos/:id - Todo teilweise aktualisieren
  * Unterstützt partielle Updates mit COALESCE-Strategie
- * 
+ *
  * @example
- * PATCH /api/todos/5 
+ * PATCH /api/todos/5
  * { "title": "Neuer Titel" }  → Nur Titel wird geändert
- * 
- * @example  
+ *
+ * @example
  * PATCH /api/todos/5
  * { "completed": 1 }          → Nur Status wird geändert
- * 
+ *
  * @param {string} req.params.id - Todo-ID
  * @param {Object} req.body - Update-Daten (title, description, completed)
  */
 app.patch("/api/todos/:id", async (req, res) => {
   const { title, description, completed } = req.body;
-  
+
   // Dynamischer SQL-Builder für partielle Updates
-  const updates = [];  // ["title = COALESCE(?, title)", ...]
-  const params = [];   // ["Neuer Titel", ...]
-  
+  const updates = []; // ["title = COALESCE(?, title)", ...]
+  const params = []; // ["Neuer Titel", ...]
+
   // Nur vorhandene Felder in Update einbeziehen
   if (title !== undefined) {
     updates.push("title = COALESCE(?, title)"); // SQL-Fragment
@@ -213,31 +298,31 @@ app.patch("/api/todos/:id", async (req, res) => {
     updates.push("completed = COALESCE(?, completed)");
     params.push(completed);
   }
-  
+
   // Mindestens ein Feld muss für Update vorhanden sein
   if (!updates.length)
     return res.status(400).json({ error: "Keine Update-Daten" });
-  
+
   // Timestamp immer aktualisieren
   updates.push("updated = ?");
   params.push(Date.now());
-  
+
   // Todo-ID als letzten Parameter hinzufügen
   params.push(req.params.id);
-  
+
   // SQL-Query dynamisch zusammenbauen
   const sql = `UPDATE todos SET ${updates.join(", ")} WHERE id = ?`;
-  
+
   try {
     const [result] = await req.pool.query(sql, params);
-    
+
     // Prüfen ob Todo existierte
     if (result.affectedRows === 0)
       return res.status(404).json({ message: "Todo nicht gefunden" });
-    
-    res.json({ 
-      message: "Todo aktualisiert", 
-      changes: result.affectedRows 
+
+    res.json({
+      message: "Todo aktualisiert",
+      changes: result.affectedRows,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

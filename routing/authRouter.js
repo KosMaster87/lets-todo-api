@@ -7,7 +7,7 @@
 // routing/authRouter.js
 import { Router } from "express";
 import bcrypt from "bcrypt";
-import { userPool, corePool } from "../db.js";
+import { userPool, corePool, userPools } from "../db.js";
 import mysql from "mysql2/promise";
 
 const router = Router();
@@ -26,7 +26,7 @@ router.post("/register", async (req, res) => {
 
   // Passwort hashen für sichere Speicherung
   const password_hash = await bcrypt.hash(password, 10);
-  
+
   // Eindeutiger DB-Name basierend auf E-Mail
   const dbName = `notes_user_${Buffer.from(email)
     .toString("hex")
@@ -35,19 +35,21 @@ router.post("/register", async (req, res) => {
 
   try {
     // 1) User in zentrale User-Tabelle eintragen
-    await userPool.query(
+    const [result] = await userPool.query(
       `INSERT INTO users (email, password_hash, db_name, created)
        VALUES (?, ?, ?, ?)`,
       [email, password_hash, dbName, created]
     );
-    
+
+    const userId = result.insertId;
+
     // 2) Dedicated User-Datenbank erstellen
     await corePool.query(
       `CREATE DATABASE IF NOT EXISTS \`${dbName}\`
        CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;`
     );
-    
-    // 3) Todos-Tabelle in User-DB initialisieren
+
+    // 3) Todos-Tabelle in User-DB initialisieren UND Pool speichern
     const pool = mysql.createPool({
       host: process.env.DB_HOST,
       port: Number(process.env.DB_PORT),
@@ -57,6 +59,7 @@ router.post("/register", async (req, res) => {
       waitForConnections: true,
       connectionLimit: 5,
     });
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS todos (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -67,7 +70,10 @@ router.post("/register", async (req, res) => {
         completed TINYINT
       );
     `);
-    
+
+    // WICHTIG: Pool für zukünftige Requests speichern
+    userPools[`user_${userId}`] = pool;
+
     res.status(201).json({ message: "User registriert" });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY")
