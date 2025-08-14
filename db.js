@@ -49,17 +49,26 @@ const userPool = mysql.createPool({
 
 /**
  * Testet die Core-Pool Verbindung beim App-Start
- * Beendet den Prozess bei Verbindungsfehlern
+ * Implementiert "Fail-Fast" Pattern - App startet nur bei funktionierender DB
+ * Beendet den Prozess bei Verbindungsfehlern (PM2 startet automatisch neu)
  * @async
  * @function testCoreConnection
  */
 (async function testCoreConnection() {
   try {
+    // Eine Verbindung aus dem Pool holen (testet DB-Erreichbarkeit)
     const conn = await corePool.getConnection();
     console.log("✅ Core-Pool verbunden mit MariaDB (DDL-Pool)");
+    
+    // WICHTIG: Verbindung zurück in den Pool geben
+    // Ohne release() wäre diese Verbindung permanent "blockiert"
     conn.release();
   } catch (err) {
-    console.error("❌ Core-Pool Verbindungsfehler:", err);
+    console.error("❌ Core-Pool Verbindungsfehler:", err.message);
+    console.error("💡 Prüfen Sie: DB läuft? Zugangsdaten korrekt? Netzwerk ok?");
+    
+    // Fail-Fast: App beenden statt fehlerhaft zu starten
+    // PM2 startet die App automatisch neu, wenn DB wieder verfügbar
     process.exit(1);
   }
 })();
