@@ -40,7 +40,10 @@ app.use(
   })
 );
 
-debugLog("CORS konfiguriert für Origins:", ENV.CORS_ORIGINS);
+// Immer CORS-Konfiguration loggen (auch in Production)
+console.log("🔧 CORS konfiguriert für Origins:", ENV.CORS_ORIGINS);
+console.log("🔧 Environment:", ENVIRONMENT);
+console.log("🔧 HTTP_PORT:", ENV.HTTP_PORT);
 
 // User-Tabelle einmalig anlegen (wird bereits beim Setup erstellt)
 debugLog(
@@ -70,9 +73,11 @@ app.use((req, res) => {
  * Bindet an alle verfügbaren Netzwerk-Interfaces (0.0.0.0)
  */
 app.listen(ENV.HTTP_PORT, ENV.HTTP_HOST, () => {
-  infoLog(
-    `Server läuft auf ${ENV.HTTP_HOST}:${ENV.HTTP_PORT} (${ENVIRONMENT})`
+  // Immer den Port loggen (auch in Production)
+  console.log(
+    `✅ Server läuft auf ${ENV.HTTP_HOST}:${ENV.HTTP_PORT} (${ENVIRONMENT})`
   );
+
   debugLog("Environment-Konfiguration:", {
     dbHost: ENV.DB_HOST,
     corsOrigins: ENV.CORS_ORIGINS,
