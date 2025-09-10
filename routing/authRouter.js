@@ -54,7 +54,7 @@ router.post("/register", async (req, res) => {
   const password_hash = await bcrypt.hash(password, 10);
 
   // Eindeutiger DB-Name basierend auf E-Mail
-  const dbName = `notes_user_${Buffer.from(email)
+  const dbName = `todos_user_${Buffer.from(email)
     .toString("hex")
     .slice(0, 24)}`;
   const created = Date.now();

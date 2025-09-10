@@ -52,8 +52,8 @@ const CONFIG = {
     DB_PORT: Number(process.env.DB_PORT) || 3306,
     DB_USER: process.env.DB_USER || "root",
     DB_PASSWORD: process.env.DB_PASSWORD || "",
-    DB_NAME: process.env.DB_NAME || "notes_dev",
-    DB_USERS: process.env.DB_USERS || "notes_users_dev",
+    DB_NAME: process.env.DB_NAME || "todos_main_dev",
+    DB_USERS: process.env.DB_USERS || "todos_users_dev",
 
     // Server
     HTTP_PORT: Number(process.env.PORT) || 3000,
@@ -85,8 +85,8 @@ const CONFIG = {
     DB_PORT: Number(process.env.DB_PORT) || 3306,
     DB_USER: process.env.DB_USER,
     DB_PASSWORD: process.env.DB_PASSWORD,
-    DB_NAME: process.env.DB_NAME || "RESTful-API-notes",
-    DB_USERS: process.env.DB_USERS || "notes_users",
+    DB_NAME: process.env.DB_NAME || "todos_main",
+    DB_USERS: process.env.DB_USERS || "todos_users",
 
     // Server
     HTTP_PORT: Number(process.env.PORT) || 3000,
@@ -114,8 +114,8 @@ const CONFIG = {
     DB_PORT: Number(process.env.DB_PORT) || 3306,
     DB_USER: process.env.DB_USER,
     DB_PASSWORD: process.env.DB_PASSWORD,
-    DB_NAME: process.env.DB_NAME || "notes_staging",
-    DB_USERS: process.env.DB_USERS || "notes_users_staging",
+    DB_NAME: process.env.DB_NAME || "todos_main_staging",
+    DB_USERS: process.env.DB_USERS || "todos_users_staging",
 
     // Server
     HTTP_PORT: Number(process.env.PORT) || 3000,

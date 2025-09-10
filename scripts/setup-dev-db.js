@@ -22,7 +22,7 @@ async function setupDevelopmentDB() {
     });
 
     // 1. Users-Datenbank erstellen
-    const usersDB = ENV.DB_USERS || "notes_users_dev";
+    const usersDB = ENV.DB_USERS || "todos_users_dev";
     await connection.execute(`CREATE DATABASE IF NOT EXISTS \`${usersDB}\``);
     infoLog(`Users-Datenbank erstellt: ${usersDB}`);
 
@@ -43,7 +43,7 @@ async function setupDevelopmentDB() {
     try {
       const testEmail = "test@dev.local";
       const testPasswordHash = "$2b$10$abcdefghijklmnopqrstuvwxyz123456"; // Dummy-Hash
-      const testDBName = "notes_user_1_dev";
+      const testDBName = "todos_user_1_dev";
 
       await connection.execute(
         `INSERT IGNORE INTO users (email, password_hash, db_name, created) VALUES (?, ?, ?, ?)`,

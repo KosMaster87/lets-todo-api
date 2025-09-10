@@ -1,4 +1,4 @@
-# RESTful Notes API - Backend
+# Let's Todo API - Backend
 
 Eine vollständige RESTful API für Todo-Management mit User- und Gast-Sessions, entwickelt mit Express.js und MariaDB.
 
@@ -15,7 +15,7 @@ Eine vollständige RESTful API für Todo-Management mit User- und Gast-Sessions,
 
 ### Database-Design
 
-- **User Database** (`notes_users_dev`): Zentrale User-Verwaltung
+- **User Database** (`todos_users_dev`): Zentrale User-Verwaltung
 - **Session Databases**: Jeder User/Gast erhält eigene Todo-Database
 - **Connection-Pooling**: Separate Pools für Core/User/Guest-Operations
 
@@ -38,7 +38,7 @@ Eine vollständige RESTful API für Todo-Management mit User- und Gast-Sessions,
 ```bash
 # Repository klonen
 git clone [repository-url]
-cd restful-notes-user-session-backend
+cd lets-todo-api
 
 # Dependencies installieren
 npm install
@@ -52,7 +52,7 @@ npm run dev
 
 Die API ist dann verfügbar unter: **http://127.0.0.1:3000**
 
-> 💡 **Full-Stack Development**: Das zugehörige [Frontend](../restful-notes-user-session-frontend) startet automatisch auf `127.0.0.1:5501` und verbindet sich mit diesem Backend.
+> 💡 **Full-Stack Development**: Das zugehörige [Frontend](../lets-todo-app) startet automatisch auf `127.0.0.1:5501` und verbindet sich mit diesem Backend.
 
 ## 🔧 Environment Configuration
 
@@ -63,8 +63,8 @@ DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=
-DB_NAME=notes_dev
-DB_USERS=notes_users_dev
+DB_NAME=todos_main_dev
+DB_USERS=todos_users_dev
 PORT=3000
 NODE_ENV=development
 DEBUG=true
@@ -78,8 +78,8 @@ DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_USER=derBenutzer
 DB_PASSWORD=desBenutzersPasswort
-DB_NAME=RESTful-API-notes
-DB_USERS=notes_users
+DB_NAME=todos_main
+DB_USERS=todos_users
 PORT=3000
 NODE_ENV=production
 ```
@@ -147,7 +147,7 @@ sudo systemctl status mariadb
 npm run dev  # Zeigt debugLog/infoLog in Console
 
 # Database-Inhalt prüfen
-mysql -u root -p notes_users_dev -e "SELECT * FROM users;"
+mysql -u root -p todos_users_dev -e "SELECT * FROM users;"
 ```
 
 ## 🔐 Security Features
@@ -233,26 +233,27 @@ CREATE TABLE todos (
 
 ### 🎨 Frontend Application
 
-**[RESTful Notes Frontend →](../restful-notes-user-session-frontend)**
+**[Let's Todo Frontend →](../lets-todo-app)**
 
 - **Technologie**: Vanilla JavaScript SPA mit Function Constructor Pattern
 - **Features**: Automatische Environment-Detection, Cookie-based Sessions
 - **Live Demo**: Direkt mit VS Code Live Server startbar
-- **Dokumentation**: [Frontend README](../restful-notes-user-session-frontend/README.md)
+- **Dokumentation**: [Frontend README](../lets-todo-app/README.md)
 
 ### 📦 Full-Stack Setup
 
 ```bash
 # Beide Repositories parallel einrichten
-git clone [main-repository]
-cd restful-notes-user-session-mariadb
+git clone https://github.com/KosMaster87/lets-todo-api.git
+git clone https://github.com/KosMaster87/lets-todo-app.git
+cd lets-todo
 
 # Backend starten
-cd restful-notes-user-session-backend
+cd lets-todo-api
 npm install && npm run dev:db && npm run dev
 
 # Frontend starten (neues Terminal)
-cd ../restful-notes-user-session-frontend
+cd ../lets-todo-app
 # Live Server auf 127.0.0.1:5501 starten
 ```
 

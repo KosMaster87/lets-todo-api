@@ -130,7 +130,7 @@ export async function enhancedPoolMiddleware(req, res, next) {
       }
 
       // Gast-Pool rekonstruieren
-      const dbName = `notes_guest_${guestId.replace(/-/g, "")}`;
+      const dbName = `todos_guest_${guestId.replace(/-/g, "")}`;
       const [dbRows] = await corePool.query(`SHOW DATABASES LIKE '${dbName}'`);
 
       if (dbRows.length) {

@@ -26,7 +26,7 @@ mysql -u root -p
 
 ```bash
 # 1. Ins Backend-Verzeichnis
-cd restful-notes-user-session-backend
+cd lets-todo-api
 
 # 2. Dependencies installieren
 npm install
@@ -47,8 +47,8 @@ DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=
-DB_NAME=notes_dev
-DB_USERS=notes_users_dev
+DB_NAME=todos_main_dev
+DB_USERS=todos_users_dev
 PORT=3000
 NODE_ENV=development
 ```
@@ -60,7 +60,8 @@ DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_USER=derBenutzer
 DB_PASSWORD=desBenutzersPasswort
-DB_NAME=RESTful-API-notes
+DB_NAME=todos_main
+DB_USERS=todos_users
 NODE_ENV=production
 ```
 

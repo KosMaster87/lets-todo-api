@@ -69,7 +69,7 @@ router.post("/guest", async (req, res, next) => {
     }
 
     // 2) Gast-Datenbank erstellen
-    const dbName = `notes_guest_${guestId.replace(/-/g, "")}`;
+    const dbName = `todos_guest_${guestId.replace(/-/g, "")}`;
     await corePool.query(
       `CREATE DATABASE IF NOT EXISTS \`${dbName}\`
        CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;`
@@ -141,7 +141,7 @@ router.get("/validate", async (req, res) => {
     // Gast-Session prüfen
     if (req.cookies.guestId) {
       const guestId = req.cookies.guestId;
-      const dbName = `notes_guest_${guestId.replace(/-/g, "")}`;
+      const dbName = `todos_guest_${guestId.replace(/-/g, "")}`;
 
       // Prüfen ob Gast-DB existiert
       const [dbRows] = await corePool.query(`SHOW DATABASES LIKE '${dbName}'`);
@@ -187,7 +187,7 @@ router.post("/guest/end", async (req, res) => {
     }
 
     // Optional: Gast-Datenbank löschen (nach Bestätigung)
-    const dbName = `notes_guest_${guestId.replace(/-/g, "")}`;
+    const dbName = `todos_guest_${guestId.replace(/-/g, "")}`;
     await corePool.query(`DROP DATABASE IF EXISTS \`${dbName}\``);
 
     // Cookie löschen

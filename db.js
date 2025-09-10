@@ -40,7 +40,7 @@ const corePool = mysql.createPool({
 
 /**
  * Pool für zentrale User-Verwaltung
- * Verbindet sich mit der notes_users Datenbank
+ * Verbindet sich mit der todos_users Datenbank
  * @type {mysql.Pool}
  */
 const userPool = mysql.createPool({
@@ -48,7 +48,7 @@ const userPool = mysql.createPool({
   port: ENV.DB_PORT,
   user: ENV.DB_USER,
   password: ENV.DB_PASSWORD,
-  database: ENV.DB_USERS || "notes_users", // zentrale User-DB
+  database: ENV.DB_USERS || "todos_users", // zentrale User-DB
   waitForConnections: true,
   connectionLimit: 5,
 });
