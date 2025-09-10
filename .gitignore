@@ -1,56 +1,78 @@
 # See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
-# Compiled output
-/dist
-/tmp
-/out-tsc
-/bazel-out
+# Dependencies
+node_modules/
+package-lock.json
 
-# Node
-/node_modules
-npm-debug.log
-yarn-error.log
+# Development
+dev-server.js
 
-# IDEs and editors
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# IDE/Editor
+.vscode/
 .idea/
 .project
 .classpath
-.c9/
-*.launch
-.settings/
 *.sublime-workspace
-
-# Visual Studio Code
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
 .history/*
 
-# Miscellaneous
-/.angular/cache
-.sass-cache/
-/connect.lock
-/coverage
-/libpeerconnection.log
-testem.log
-/typings
+# CI/CD
+.github/
 
-# System files
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log
+
+# OS generated files
 .DS_Store
 Thumbs.db
+/.directory
+
+# Temporary files
+*.tmp
+*.temp
+/tmp
+/out-tsc
+
+# Build output
+/dist
+/bazel-out
+
+# Coverage reports
+# /coverage
 
 # Firebase
 .firebase
 *-debug.log
 .runtimeconfig.json
-src/app/firebase.config.ts
 
-# Linux
-/.directory
+# SSL certificates
+csr.pem
+privateKey.pem
+certificate.pem
 
-# Environments files
-.env
+# Apache
+.htaccess
 
-# custom files
+# Cache
+/.angular/cache
+.sass-cache/
+
+# Runtime
+/connect.lock
+/libpeerconnection.log
+testem.log
+/typings
+
+# Copilot
+# copilot-instructions.md
+
+# Documentation
+docs/
