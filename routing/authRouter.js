@@ -1,13 +1,39 @@
 /**
  * Authentifizierungs-Router
  * Verwaltet User-Registrierung, Login und Logout
- * Jeder User erhält eine eigene Datenbank
+ * Jeder User erhält eine     // Eventuelle Gast-Session löschen
+    if (req.cookies.guestId) {
+      const clearCookieOptions = { path: "/" };
+      if (ENV.COOKIE_DOMAIN) clearCookieOptions.domain = ENV.COOKIE_DOMAIN;
+      res.clearCookie("guestId", clearCookieOptions);
+    }
+
+    // Session-Cookie setzen
+    const cookieOptions = {
+      httpOnly: false, // Für Frontend-Zugriff
+      secure: ENV.COOKIE_SECURE, // false in Development, true in Production
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 Tage
+      path: "/",
+    };
+    
+    // SameSite nur in Production setzen (mit secure: true)
+    if (ENV.COOKIE_SECURE) {
+      cookieOptions.sameSite = "lax";
+    }
+    
+    // Domain nur setzen wenn definiert (Production), in Development weglassen
+    if (ENV.COOKIE_DOMAIN) {
+      cookieOptions.domain = ENV.COOKIE_DOMAIN;
+    }
+    
+    res.cookie("userId", user.id, cookieOptions);nk
  */
 
 // routing/authRouter.js
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import { userPool, corePool, userPools } from "../db.js";
+import { ENV, debugLog, errorLog } from "../config/environment.js";
 import mysql from "mysql2/promise";
 
 const router = Router();
@@ -106,20 +132,33 @@ router.post("/login", async (req, res) => {
     if (!valid)
       return res.status(401).json({ error: "Ungültige Zugangsdaten" });
 
-    // Gast-Cookie ZUERST löschen
+    // Eventuelle Gast-Session löschen
     if (req.cookies.guestId) {
-      res.clearCookie("guestId", { domain: ".dev2k.org", path: "/" });
+      const clearCookieOptions = { path: "/" };
+      if (ENV.COOKIE_DOMAIN) clearCookieOptions.domain = ENV.COOKIE_DOMAIN;
+      res.clearCookie("guestId", clearCookieOptions);
     }
 
-    // Session-Cookie setzen - DOMAIN KORRIGIERT
-    res.cookie("userId", user.id, {
-      httpOnly: false, // Für Debug
-      secure: true,
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      domain: ".dev2k.org", // KORRIGIERT: Gemeinsame Parent-Domain
+    // Session-Cookie setzen
+    const cookieOptions = {
+      httpOnly: false, // Für Frontend-Zugriff
+      secure: ENV.COOKIE_SECURE, // false in Development, true in Production
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 Tage
       path: "/",
-    });
+    };
+
+    // SameSite nur in Production setzen (mit secure: true)
+    if (ENV.COOKIE_SECURE) {
+      cookieOptions.sameSite = "lax";
+    }
+
+    // Domain nur setzen wenn definiert (Production), in Development weglassen
+    if (ENV.COOKIE_DOMAIN) {
+      cookieOptions.domain = ENV.COOKIE_DOMAIN;
+    }
+
+    debugLog(`User-Login Cookie-Optionen:`, cookieOptions);
+    res.cookie("userId", user.id, cookieOptions);
 
     res.json({ message: "Login erfolgreich", userId: user.id });
   } catch (err) {
@@ -132,7 +171,9 @@ router.post("/login", async (req, res) => {
  * Löscht das userId Cookie
  */
 router.post("/logout", (req, res) => {
-  res.clearCookie("userId", { domain: ".dev2k.org", path: "/" });
+  const clearCookieOptions = { path: "/" };
+  if (ENV.COOKIE_DOMAIN) clearCookieOptions.domain = ENV.COOKIE_DOMAIN;
+  res.clearCookie("userId", clearCookieOptions);
   // guestId NICHT automatisch setzen!
   res.json({ message: "Logout erfolgreich" });
 });

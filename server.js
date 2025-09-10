@@ -11,37 +11,41 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 
+import {
+  ENV,
+  ENVIRONMENT,
+  debugLog,
+  infoLog,
+  errorLog,
+} from "./config/environment.js";
 import { userPool } from "./db.js";
 import authRouter from "./routing/authRouter.js";
 import sessionRouter from "./routing/sessionRouter.js";
 import todosRouter from "./routing/todosRouter.js";
-import { assignPoolMiddleware, enhancedPoolMiddleware } from "./middleware/poolMiddleware.js";
+import {
+  assignPoolMiddleware,
+  enhancedPoolMiddleware,
+} from "./middleware/poolMiddleware.js";
 
 const app = express();
-const HTTP_PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
 app.use(
   cors({
-    origin: ["https://app-restful-notes-user-session.dev2k.org"],
+    origin: ENV.CORS_ORIGINS,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
   })
 );
 
-// User-Tabelle einmalig anlegen
-(async () => {
-  await userPool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      email VARCHAR(255) UNIQUE NOT NULL,
-      password_hash VARCHAR(255) NOT NULL,
-      db_name VARCHAR(255) NOT NULL,
-      created BIGINT
-    );`);
-})();
+debugLog("CORS konfiguriert für Origins:", ENV.CORS_ORIGINS);
+
+// User-Tabelle einmalig anlegen (wird bereits beim Setup erstellt)
+debugLog(
+  "Tabellen-Erstellung übersprungen - bereits in setup-dev-db.js erstellt"
+);
 
 // Auth- und Session-Router (diese brauchen keine Pool-Zuweisung)
 app.use("/api/session", sessionRouter);
@@ -65,6 +69,13 @@ app.use((req, res) => {
  * Server starten und auf eingehende Verbindungen hören
  * Bindet an alle verfügbaren Netzwerk-Interfaces (0.0.0.0)
  */
-app.listen(HTTP_PORT, "0.0.0.0", () => {
-  console.log(`✅ Server läuft auf Port ${HTTP_PORT}`);
+app.listen(ENV.HTTP_PORT, ENV.HTTP_HOST, () => {
+  infoLog(
+    `Server läuft auf ${ENV.HTTP_HOST}:${ENV.HTTP_PORT} (${ENVIRONMENT})`
+  );
+  debugLog("Environment-Konfiguration:", {
+    dbHost: ENV.DB_HOST,
+    corsOrigins: ENV.CORS_ORIGINS,
+    cookieDomain: ENV.COOKIE_DOMAIN,
+  });
 });

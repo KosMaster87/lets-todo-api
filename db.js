@@ -8,8 +8,7 @@
 
 //  db.js
 import mysql from "mysql2/promise";
-import dotenv from "dotenv";
-dotenv.config(); // zieht PORT, DB_HOST, DB_PORT, usw. aus .env
+import { ENV, debugLog, errorLog } from "./config/environment.js";
 
 /**
  * Map zum Speichern der Connection-Pools pro Guest-ID oder User-ID
@@ -31,10 +30,10 @@ const userPools = {};
  * @type {mysql.Pool}
  */
 const corePool = mysql.createPool({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT),
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
+  host: ENV.DB_HOST,
+  port: ENV.DB_PORT,
+  user: ENV.DB_USER,
+  password: ENV.DB_PASSWORD,
   waitForConnections: true,
   connectionLimit: 10,
 });
@@ -45,11 +44,11 @@ const corePool = mysql.createPool({
  * @type {mysql.Pool}
  */
 const userPool = mysql.createPool({
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT),
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_USERS || "notes_users", // zentrale User-DB
+  host: ENV.DB_HOST,
+  port: ENV.DB_PORT,
+  user: ENV.DB_USER,
+  password: ENV.DB_PASSWORD,
+  database: ENV.DB_USERS || "notes_users", // zentrale User-DB
   waitForConnections: true,
   connectionLimit: 5,
 });
@@ -65,13 +64,13 @@ const userPool = mysql.createPool({
   try {
     // Eine Verbindung aus dem Pool holen (testet DB-Erreichbarkeit)
     const conn = await corePool.getConnection();
-    console.log("✅ Core-Pool verbunden mit MariaDB (DDL-Pool)");
+    debugLog("Core-Pool verbunden mit MariaDB (DDL-Pool)");
 
     // WICHTIG: Verbindung zurück in den Pool geben
     // Ohne release() wäre diese Verbindung permanent "blockiert"
     conn.release();
   } catch (err) {
-    console.error("❌ Core-Pool Verbindungsfehler:", err.message);
+    errorLog("Core-Pool Verbindungsfehler:", err.message);
     console.error(
       "💡 Prüfen Sie: DB läuft? Zugangsdaten korrekt? Netzwerk ok?"
     );

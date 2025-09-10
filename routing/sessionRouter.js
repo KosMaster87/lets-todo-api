@@ -1,13 +1,26 @@
 /**
  * Session-Management Router
- * Verwaltet Gast-Sessions und Session-Validierung
- * Jeder Gast erhält eine temporäre UUID-basierte Datenbank
+ * Verwaltet Gast-Sessions     // Sicherstellen: keine User-Session gleichzeitig
+    if (req.cookies.userId) {
+      const clearUserCookieOptions = { path: "/" };
+      if (ENV.COOKIE_DOMAIN) clearUserCookieOptions.domain = ENV.COOKIE_DOMAIN;
+      res.clearCookie("userId", clearUserCookieOptions);
+    }Session-Validierung
+ * Jeder Gast erhält eine temporäre UUID-basie        // Gast-DB nicht gefunden - Cookie     // Cookie löschen
+    const clearCookieOptions = { path: "/" };
+    if (ENV.COOKIE_DOMAIN) clearCookieOptions.domain = ENV.COOKIE_DOMAIN;
+    res.clearCookie("guestId", clearCookieOptions);en
+        const clearCookieOptions = { path: "/" };
+        if (ENV.COOKIE_DOMAIN) clearCookieOptions.domain = ENV.COOKIE_DOMAIN;
+        res.clearCookie("guestId", clearCookieOptions);
+        return res.status(401).json({ error: "Gast-Session ungültig" });tenbank
  */
 
 // routing/sessionRouter.js
 import { Router } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { corePool, guestPools, userPool } from "../db.js";
+import { ENV, debugLog, errorLog } from "../config/environment.js";
 import mysql from "mysql2/promise";
 
 const router = Router();
@@ -19,21 +32,38 @@ const router = Router();
  */
 router.post("/guest", async (req, res, next) => {
   try {
+    debugLog(`POST /session/guest - Cookies empfangen:`, req.cookies);
+    debugLog(`POST /session/guest - Request Origin:`, req.get("Origin"));
+
     // 1) Guest-ID generieren oder aus Cookie lesen
     let guestId = req.cookies.guestId;
     if (!guestId) {
       guestId = uuidv4();
-      res.cookie("guestId", guestId, {
-        httpOnly: false, // Für Debug
-        secure: true,
-        sameSite: "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        domain: ".dev2k.org",
-        path: "/",
-      });
-    }
+      debugLog(`Neue Gast-Session erstellt: ${guestId}`);
 
-    // Sicherstellen: keine User-Session gleichzeitig
+      const cookieOptions = {
+        httpOnly: false, // Für Frontend-Zugriff
+        secure: ENV.COOKIE_SECURE, // false in Development, true in Production
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 Tage
+        path: "/",
+      };
+
+      // SameSite nur in Production setzen (mit secure: true)
+      // In Development komplett weglassen - Browser-Default ist meist 'lax'
+      if (ENV.COOKIE_SECURE) {
+        cookieOptions.sameSite = "lax";
+      }
+
+      // Domain nur setzen wenn definiert (Production), in Development weglassen
+      if (ENV.COOKIE_DOMAIN) {
+        cookieOptions.domain = ENV.COOKIE_DOMAIN;
+      }
+
+      debugLog(`Cookie-Optionen:`, cookieOptions);
+      res.cookie("guestId", guestId, cookieOptions);
+    } else {
+      debugLog(`Bestehende Gast-Session gefunden: ${guestId}`);
+    } // Sicherstellen: keine User-Session gleichzeitig
     if (req.cookies.userId) {
       res.clearCookie("userId", { domain: ".dev2k.org", path: "/" });
     }
@@ -100,7 +130,10 @@ router.get("/validate", async (req, res) => {
         });
       } else {
         // User nicht gefunden - Cookie löschen
-        res.clearCookie("userId", { domain: ".dev2k.org", path: "/" });
+        const clearUserCookieOptions = { path: "/" };
+        if (ENV.COOKIE_DOMAIN)
+          clearUserCookieOptions.domain = ENV.COOKIE_DOMAIN;
+        res.clearCookie("userId", clearUserCookieOptions);
         return res.status(401).json({ error: "User-Session ungültig" });
       }
     }
@@ -120,7 +153,9 @@ router.get("/validate", async (req, res) => {
         });
       } else {
         // Gast-DB nicht gefunden - Cookie löschen
-        res.clearCookie("guestId", { domain: ".dev2k.org", path: "/" });
+        const clearCookieOptions = { path: "/" };
+        if (ENV.COOKIE_DOMAIN) clearCookieOptions.domain = ENV.COOKIE_DOMAIN;
+        res.clearCookie("guestId", clearCookieOptions);
         return res.status(401).json({ error: "Gast-Session ungültig" });
       }
     }
@@ -156,7 +191,9 @@ router.post("/guest/end", async (req, res) => {
     await corePool.query(`DROP DATABASE IF EXISTS \`${dbName}\``);
 
     // Cookie löschen
-    res.clearCookie("guestId", { domain: ".dev2k.org", path: "/" });
+    const clearCookieOptions = { path: "/" };
+    if (ENV.COOKIE_DOMAIN) clearCookieOptions.domain = ENV.COOKIE_DOMAIN;
+    res.clearCookie("guestId", clearCookieOptions);
 
     res.json({ message: "Gast-Session beendet und Daten gelöscht" });
   } catch (err) {
