@@ -93,7 +93,11 @@ const CONFIG = {
     HTTP_HOST: "0.0.0.0",
 
     // CORS
-    CORS_ORIGINS: ["https://lets-todo-api.dev2k.org"],
+    CORS_ORIGINS: [
+      "https://lets-todo-api.dev2k.org", // ← Hier deine API-Domain eintragen
+      "https://lets-todo.dev2k.org", // ← Hier deine Frontend-Domain eintragen
+      "http://localhost:3000", // ← Für lokale Tests behalten
+    ],
 
     // Cookies
     COOKIE_DOMAIN: ".dev2k.org",
