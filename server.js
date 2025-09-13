@@ -1,3 +1,4 @@
+// server.js
 /**
  * Express-Server für Todo-App mit User- und Gast-Session-Management
  * Features:

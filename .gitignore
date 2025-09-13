@@ -7,12 +7,16 @@ package-lock.json
 # Development
 dev-server.js
 
-# Environment files
-.env
-.env.local
-.env.development
-.env.test
-.env.production
+# Environment files - Keep example files for reference
+config/env/.env.production
+config/env/.env.feature
+config/env/.env.staging
+config/env/.env.development
+
+# Deployment packages and temp files
+deploy/package/
+deploy/*.tar.gz
+deploy/*.zip
 
 # IDE/Editor
 .vscode/
@@ -45,14 +49,6 @@ Thumbs.db
 /dist
 /bazel-out
 
-# Coverage reports
-# /coverage
-
-# Firebase
-.firebase
-*-debug.log
-.runtimeconfig.json
-
 # SSL certificates
 csr.pem
 privateKey.pem
@@ -61,18 +57,6 @@ certificate.pem
 # Apache
 .htaccess
 
-# Cache
-/.angular/cache
-.sass-cache/
-
-# Runtime
-/connect.lock
-/libpeerconnection.log
-testem.log
-/typings
-
-# Copilot
-# copilot-instructions.md
-
 # Documentation
 docs/
+

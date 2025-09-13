@@ -1,6 +1,6 @@
 /**
  * Database Setup Script
- * Erstellt Datenbanken für Development und Production
+ * Erstellt Datenbanken für alle Environments (development, feature, staging, production)
  */
 
 import mysql from "mysql2/promise";
@@ -13,7 +13,8 @@ import {
 } from "../config/environment.js";
 
 /**
- * Setup für Datenbank (Development oder Production)
+ * Setup für Datenbank (Multi-Environment Support)
+ * Unterstützt: development, feature, staging, production
  */
 async function setupDatabase() {
   try {
@@ -45,12 +46,14 @@ async function setupDatabase() {
     `);
     infoLog("Users-Tabelle erstellt");
 
-    // 3. Test-Benutzer erstellen (optional für Development)
-    if (ENVIRONMENT === "development") {
+    // 3. Test-Benutzer erstellen (für alle non-production Environments)
+    if (ENVIRONMENT !== "production") {
       try {
-        const testEmail = "test@dev.local";
+        // Environment-spezifische Test-User
+        const envSuffix = ENVIRONMENT === "development" ? "dev" : ENVIRONMENT;
+        const testEmail = `test@${envSuffix}.local`;
         const testPasswordHash = "$2b$10$abcdefghijklmnopqrstuvwxyz123456"; // Dummy-Hash
-        const testDBName = "todos_user_1_dev";
+        const testDBName = `todos_user_1_${envSuffix}`;
 
         await connection.execute(
           `INSERT IGNORE INTO users (email, password_hash, db_name, created) VALUES (?, ?, ?, ?)`,
@@ -74,6 +77,17 @@ async function setupDatabase() {
           );
         `);
         infoLog(`Test-User-Datenbank erstellt: ${testDBName}`);
+
+        // Environment-spezifische Test-Todos erstellen
+        if (ENVIRONMENT === "development") {
+          await connection.execute(`
+            INSERT IGNORE INTO todos (id, title, description, completed, created, updated) VALUES 
+            (1, 'Welcome to Let\\'s Todo API', 'Diese Todo wurde automatisch vom Setup-Script erstellt', 0, ${Date.now()}, ${Date.now()}),
+            (2, 'Test the API', 'Teste die verschiedenen Endpoints mit Thunder Client oder curl', 0, ${Date.now()}, ${Date.now()}),
+            (3, 'Completed Example', 'Dies ist ein Beispiel einer erledigten Todo', 1, ${Date.now()}, ${Date.now()})
+          `);
+          infoLog("Test-Todos für Development erstellt");
+        }
       } catch (err) {
         debugLog("Test-User bereits vorhanden oder Fehler:", err.message);
       }
@@ -82,12 +96,28 @@ async function setupDatabase() {
     await connection.end();
     infoLog(`✅ ${ENVIRONMENT} Database Setup abgeschlossen!`);
 
+    // Environment-spezifische Abschluss-Meldungen
+    console.log(
+      `\n🎯 ${ENVIRONMENT.toUpperCase()} Database Setup abgeschlossen!`
+    );
+
     if (ENVIRONMENT === "development") {
       console.log("\n🚀 Sie können jetzt starten mit:");
       console.log("npm run dev");
+      console.log("\n👤 Test-User Zugangsdaten:");
+      console.log("Email: test@dev.local");
+      console.log("Password: beliebig (Dummy-Hash)");
+    } else if (ENVIRONMENT === "feature") {
+      console.log("\n🚀 Feature Environment ist bereit!");
+      console.log("👤 Test-User: test@feature.local");
+      console.log("Port: 3003");
+    } else if (ENVIRONMENT === "staging") {
+      console.log("\n🚀 Staging Environment ist bereit!");
+      console.log("👤 Test-User: test@staging.local");
+      console.log("Port: 3004");
     } else {
       console.log("\n🚀 Production-Datenbank ist bereit!");
-      console.log("Die users-Tabelle wurde erstellt.");
+      console.log("⚠️  Kein Test-User in Production erstellt.");
     }
   } catch (error) {
     errorLog("❌ Database Setup Fehler:", error);

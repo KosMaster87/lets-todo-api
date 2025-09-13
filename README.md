@@ -1,69 +1,121 @@
-# Let's Todo API - Backend
+# 🚀 Let's Todo API
 
-Eine vollständige RESTful API für Todo-Management mit User- und Gast-Sessions, entwickelt mit Express.js und MariaDB.
+Professional Node.js Express API with multi-environment deployment, database-per-session architecture, and automated SSL setup.
 
-## 🌟 Features
+## ✨ Key Features
 
-- **Multi-Session-Support**: Separate User- und Gast-Sessions
-- **Database-per-Session**: Vollständige Datenisolation pro User/Gast
-- **Environment-Detection**: Automatische Development/Production-Konfiguration
-- **Cookie-based Authentication**: Sichere Session-Verwaltung
-- **RESTful API**: Vollständiges CRUD für Todos
-- **Auto-Pool-Management**: Dynamische Database-Connection-Pools
-
-## 🏗️ Architecture
-
-### Database-Design
-
-- **User Database** (`todos_users_dev`): Zentrale User-Verwaltung
-- **Session Databases**: Jeder User/Gast erhält eigene Todo-Database
-- **Connection-Pooling**: Separate Pools für Core/User/Guest-Operations
-
-### Session-Management
-
-- **User-Sessions**: Persistent mit bcrypt-Authentication
-- **Guest-Sessions**: Temporär mit UUID-basierten Datenbanken
-- **Session-Isolation**: Strikte Trennung zwischen User- und Gast-Daten
+- **🏗️ Multi-Environment**: Development, Feature, Staging, Production
+- **🗄️ Database-per-Session**: Isolated MySQL databases for each user/guest
+- **🔒 Secure Authentication**: Cookie-based sessions with bcrypt hashing
+- **⚡ Auto-Deployment**: PM2 + Nginx deployment packages
+- **🌐 SSL Ready**: Let's Encrypt integration
+- **📊 RESTful API**: Complete CRUD with session isolation
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 - Node.js 18+
-- MariaDB/MySQL Server
+- MySQL/MariaDB
 - Git
 
 ### Installation
 
 ```bash
-# Repository klonen
-git clone [repository-url]
+git clone https://github.com/KosMaster87/lets-todo-api.git
 cd lets-todo-api
-
-# Dependencies installieren
 npm install
-
-# Development-Datenbank einrichten
-npm run dev:db
-
-# Development-Server starten
-npm run dev
+npm run dev:db    # Setup development database
+npm run dev       # Start development server
 ```
 
-Die API ist dann verfügbar unter: **http://127.0.0.1:3000**
+**🎯 API available at:** http://127.0.0.1:3000
 
-> 💡 **Full-Stack Development**: Das zugehörige [Frontend](../lets-todo-app) startet automatisch auf `127.0.0.1:5501` und verbindet sich mit diesem Backend.
+> **💡 Full-Stack Setup:** Use with [Let's Todo Frontend](../lets-todo-app) for complete development experience.
 
-## 🔧 Environment Configuration
+## 📡 API Reference
 
-### Development (`.env.development`)
+### Authentication
+
+```
+POST /api/register       # Create user account + dedicated database
+POST /api/login          # Login user + set session cookie
+POST /api/logout         # Clear session cookie
+```
+
+### Session Management
+
+```
+POST /api/session/guest     # Start guest session + temp database
+GET  /api/session/validate  # Check current session status
+POST /api/session/guest/end # End guest session + cleanup database
+```
+
+### Todos (Session-Isolated)
+
+```
+GET    /api/todos        # Get all todos for current session
+POST   /api/todos        # Create new todo
+GET    /api/todos/:id    # Get specific todo
+PATCH  /api/todos/:id    # Update todo (partial update)
+DELETE /api/todos/:id    # Delete todo
+```
+
+### API Examples
+
+```bash
+# Register new user
+curl -X POST http://127.0.0.1:3000/api/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"secure123"}'
+
+# Login user
+curl -X POST http://127.0.0.1:3000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"secure123"}'
+
+# Create todo (requires login cookie)
+curl -X POST http://127.0.0.1:3000/api/todos \
+  -H "Content-Type: application/json" \
+  -b "cookies.txt" \
+  -d '{"title":"My Todo","description":"Todo description"}'
+```
+
+## 🏗️ Architecture Overview
+
+### Database-per-Session
+
+Each user and guest gets their own isolated MySQL database:
+
+- **User Database**: `todos_user_123` (persistent)
+- **Guest Database**: `todos_guest_uuid` (temporary)
+- **Central Users DB**: `todos_users_dev` (user management)
+
+### Multi-Environment Support
+
+- **Development** (3000): Local development with debug logging
+- **Feature** (3003): Feature testing environment
+- **Staging** (3004): Pre-production testing
+- **Production** (3002): Live production system
+
+### Domain Structure
+
+- Production: `lets-todo-api.dev2k.org`
+- Feature: `lets-todo-api-feat.dev2k.org`
+- Staging: `lets-todo-api-stage.dev2k.org`
+
+## ⚙️ Configuration
+
+### Environment Setup
+
+Create environment files in `config/env/`:
 
 ```env
+# config/env/.env.development
 DB_HOST=127.0.0.1
-DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=
-DB_NAME=todos_main_dev
+DB_NAME=todos_dev
 DB_USERS=todos_users_dev
 PORT=3000
 NODE_ENV=development
@@ -71,226 +123,145 @@ DEBUG=true
 LOG_LEVEL=verbose
 ```
 
-### Production (`.env`)
+### Automatic Environment Detection
 
-```env
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_USER=derBenutzer
-DB_PASSWORD=desBenutzersPasswort
-DB_NAME=todos_main
-DB_USERS=todos_users
-PORT=3000
-NODE_ENV=production
+The system detects environment based on:
+
+- `NODE_ENV` environment variable
+- System paths (`/home/`, `/Users/` = development)
+- Database host (`127.0.0.1` = development)
+
+## 🚀 Production Deployment
+
+### Using PM2
+
+```bash
+# Copy example config
+cp ecosystem.config.cjs.example ecosystem.config.cjs
+
+# Start all environments
+pm2 start ecosystem.config.cjs
+
+# Start specific environment
+pm2 start ecosystem.config.cjs --only lets-todo-api-prod
+
+# Monitor processes
+pm2 logs lets-todo-api-prod
+pm2 monit
 ```
 
-### Automatische Environment-Detection
+### Automated Deployment
 
-Das System erkennt automatisch die Umgebung basierend auf:
+```bash
+# Create deployment package
+./deploy/create-deployment-package.sh
 
-- `NODE_ENV` Environment Variable
-- Database-Host (127.0.0.1/localhost = Development)
-- Dateipfad-Pattern (/home/, /Users/ = Development)
-
-## 📡 API Endpoints
-
-### Authentication
-
-```
-POST /api/register       # User-Registrierung + eigene DB
-POST /api/login          # User-Login + Cookie-Session
-POST /api/logout         # Cookie-Clearing
+# Deploy to server
+scp deploy/package/lets-todo-api-deployment.tar.gz server:/path/
 ```
 
-### Session-Management
+### SSL Setup
 
-```
-POST /api/session/guest     # Gast-Session starten
-GET  /api/session/validate  # Session-Validierung
-POST /api/session/guest/end # Gast-Session beenden
-```
+The deployment package includes:
 
-### Todos (CRUD)
+- Nginx reverse proxy configurations
+- Let's Encrypt SSL certificate setup
+- Rate limiting and security headers
 
-```
-GET    /api/todos        # Alle Todos der Session
-GET    /api/todos/:id    # Einzelnes Todo
-POST   /api/todos        # Neues Todo erstellen
-PATCH  /api/todos/:id    # Todo teilweise updaten
-DELETE /api/todos/:id    # Todo löschen
-```
+## 🔒 Security Features
+
+- **Password Hashing**: bcrypt with salt rounds
+- **SQL Injection Prevention**: Prepared statements only
+- **Session Isolation**: Complete database separation per session
+- **CORS Protection**: Environment-specific allowed origins
+- **Environment-aware Cookies**: Secure settings per environment
 
 ## 🛠️ Development
 
 ### NPM Scripts
 
 ```bash
-npm run dev      # Development mit Auto-Reload
-npm run dev:db   # Database-Setup für Development
-npm start        # Production-Server
-npm run prod     # Explicit Production-Mode
+npm run dev      # Development server with auto-reload
+npm run dev:db   # Setup/reset development database
+npm start        # Production server
+npm run prod     # Explicit production mode
 ```
 
-### Database-Management
+### Testing
 
-- **Automatische DB-Erstellung**: User- und Gast-DBs werden on-demand erstellt
-- **Pool-Management**: Connection-Pools werden automatisch verwaltet
-- **Session-Cleanup**: Beendete Sessions räumen ihre Pools auf
+Recommended tools:
 
-### Debugging
+- **Thunder Client** (VS Code extension)
+- **Postman** (standalone app)
+- **curl** (command line)
 
-```bash
-# MariaDB-Status prüfen
-sudo systemctl status mariadb
+**⚠️ Important:** Include cookies in requests for authenticated endpoints.
 
-# Development-Logs anzeigen
-npm run dev  # Zeigt debugLog/infoLog in Console
+## 🔗 Related Projects
 
-# Database-Inhalt prüfen
-mysql -u root -p todos_users_dev -e "SELECT * FROM users;"
-```
+### [Let's Todo Frontend →](../lets-todo-app)
 
-## 🔐 Security Features
-
-### Authentication
-
-- **bcrypt Password Hashing**: 10 Rounds für sichere Passwort-Speicherung
-- **SQL-Injection Prevention**: Prepared Statements für alle Queries
-- **Session-Isolation**: Database-per-Session für vollständige Datentrennung
-
-### Cookie-Management
-
-- **Environment-aware Cookies**: Development vs Production Settings
-- **httpOnly=false**: Für Frontend-Zugriff auf Session-Daten
-- **Secure Cookies**: Nur über HTTPS in Production
-- **Domain-Restriction**: Production-Cookies beschränkt auf .dev2k.org
-
-### CORS-Configuration
-
-- **Development**: Alle lokalen Ports (5500, 5501, 8000, 8080)
-- **Production**: Nur vertrauenswürdige Domains
-- **Credentials**: true für Cookie-Support
-
-## 🗄️ Database Schema
-
-### Users Database
-
-```sql
-CREATE TABLE users (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  db_name VARCHAR(255) NOT NULL,
-  created BIGINT
-);
-```
-
-### Todos Database (pro Session)
-
-```sql
-CREATE TABLE todos (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  title TEXT NOT NULL,
-  description TEXT,
-  created BIGINT,
-  updated BIGINT,
-  completed TINYINT
-);
-```
-
-## 🚀 Production Deployment
-
-### Environment Setup
-
-1. **MariaDB**: Production-Database einrichten
-2. **Environment**: `.env`-Datei mit Production-Credentials
-3. **CORS**: Frontend-Domain in CORS_ORIGINS eintragen
-4. **SSL**: HTTPS für secure Cookies aktivieren
-
-### Performance Optimization
-
-- **Connection-Pooling**: Optimierte Pool-Limits für Production
-- **Logging**: Error-only Logging für Performance
-- **Database-Cleanup**: Automatisches Cleanup für Gast-Sessions
-
-## 🤝 Development Guidelines
-
-### Code-Standards
-
-- **ES6 Modules**: Import/Export statt CommonJS
-- **Environment-Detection**: Automatische Development/Production-Switches
-- **Error-Handling**: Try/catch mit Environment-spezifischem Logging
-- **Database-Patterns**: Pool-Management mit Lifecycle-Cleanup
-
-### Neue Features hinzufügen
-
-1. **Router**: Neue Endpoints in `routing/` erstellen
-2. **Middleware**: Pool-Assignment für neue Routes nutzen
-3. **Environment**: Configs in `config/environment.js` ergänzen
-4. **Testing**: API-Tests mit Thunder Client/Postman
-
-## 📚 Related Projects
-
-### 🎨 Frontend Application
-
-**[Let's Todo Frontend →](../lets-todo-app)**
-
-- **Technologie**: Vanilla JavaScript SPA mit Function Constructor Pattern
-- **Features**: Automatische Environment-Detection, Cookie-based Sessions
-- **Live Demo**: Direkt mit VS Code Live Server startbar
-- **Dokumentation**: [Frontend README](../lets-todo-app/README.md)
-
-### 📦 Full-Stack Setup
-
-```bash
-# Beide Repositories parallel einrichten
-git clone https://github.com/KosMaster87/lets-todo-api.git
-git clone https://github.com/KosMaster87/lets-todo-app.git
-cd lets-todo
-
-# Backend starten
-cd lets-todo-api
-npm install && npm run dev:db && npm run dev
-
-# Frontend starten (neues Terminal)
-cd ../lets-todo-app
-# Live Server auf 127.0.0.1:5501 starten
-```
-
-### 🔗 Development Links
-
-- **Frontend Development**: http://127.0.0.1:5501
-- **Backend API**: http://127.0.0.1:3000/api
-- **API Documentation**: Siehe Frontend README für vollständige Endpoint-Liste
-- **Debugging Tools**: Frontend beinhaltet `test-cookies.html` und `test-direct.html`
+- Vanilla JavaScript SPA with modular architecture
+- Automatic environment detection and API connection
+- Cookie-based session management
+- Live development on `127.0.0.1:5501`
 
 ## 🐛 Troubleshooting
 
-### Database-Probleme
+### Database Connection Issues
 
 ```bash
-# MariaDB starten
-sudo systemctl start mariadb
+# Check if MariaDB is running
+sudo systemctl status mariadb
 
-# Connection testen
+# Test database connection
 mysql -u root -p -e "SELECT 1;"
 
-# User-Permissions prüfen
-mysql -u root -p -e "SHOW GRANTS FOR 'root'@'localhost';"
+# View user databases
+mysql -e "SHOW DATABASES LIKE 'todos_%';"
 ```
 
-### Cookie-Probleme
+### Environment Issues
 
-- **Development**: Cookies zwischen 127.0.0.1:5501 ↔ 127.0.0.1:3000
-- **Production**: Domain-restricted Cookies (.dev2k.org)
-- **Browser**: Moderne Browser blockieren unsichere Cookies
+```bash
+# Force specific environment
+NODE_ENV=production npm start
 
-### Environment-Detection
+# Check detected environment
+npm run dev  # Shows environment detection in logs
+```
 
-- **Check**: Welches Environment wird erkannt?
-- **Override**: `NODE_ENV=production` für explizite Steuerung
-- **Logs**: `debugLog()` zeigt Environment-Detection Details
+### Session/Cookie Issues
+
+- Development: Cookies work between `127.0.0.1:5501` ↔ `127.0.0.1:3000`
+- Production: Cookies are domain-restricted to `.dev2k.org`
+- Modern browsers block insecure cookies
+
+## � Deployment
+
+**Quick Deploy:**
+
+```bash
+./deploy/create-deployment-package.sh  # Create package
+# Copy to server and run deploy.sh
+```
+
+**📚 Complete deployment guide with SSL, multi-environment setup, monitoring, and troubleshooting:** **[DEPLOYMENT.md](./DEPLOYMENT.md)**
+
+## �📚 Documentation
+
+- **[Complete Deployment Guide](./DEPLOYMENT.md)** - Production setup, SSL, monitoring
+- **[Architecture & Coding Standards](./copilot-instructions.md)** - For developers
+- **[Detailed Development Setup](./DEVELOPMENT.md)** - Database setup, debugging tools
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
 
 ---
 
-**Entwickelt mit ❤️ für moderne Full-Stack Development**
+**Built with ❤️ for modern full-stack development**

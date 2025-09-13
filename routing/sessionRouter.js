@@ -1,21 +1,3 @@
-/**
- * Session-Management Router
- * Verwaltet Gast-Sessions     // Sicherstellen: keine User-Session gleichzeitig
-    if (req.cookies.userId) {
-      const clearUserCookieOptions = { path: "/" };
-      if (ENV.COOKIE_DOMAIN) clearUserCookieOptions.domain = ENV.COOKIE_DOMAIN;
-      res.clearCookie("userId", clearUserCookieOptions);
-    }Session-Validierung
- * Jeder Gast erhält eine temporäre UUID-basie        // Gast-DB nicht gefunden - Cookie     // Cookie löschen
-    const clearCookieOptions = { path: "/" };
-    if (ENV.COOKIE_DOMAIN) clearCookieOptions.domain = ENV.COOKIE_DOMAIN;
-    res.clearCookie("guestId", clearCookieOptions);en
-        const clearCookieOptions = { path: "/" };
-        if (ENV.COOKIE_DOMAIN) clearCookieOptions.domain = ENV.COOKIE_DOMAIN;
-        res.clearCookie("guestId", clearCookieOptions);
-        return res.status(401).json({ error: "Gast-Session ungültig" });tenbank
- */
-
 // routing/sessionRouter.js
 import { Router } from "express";
 import { v4 as uuidv4 } from "uuid";

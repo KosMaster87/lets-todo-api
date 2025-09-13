@@ -1,32 +1,36 @@
 /**
  * Backend Environment-Konfiguration
- * Automatische Erkennung von Development vs Production
+ * Multi-Environment Support: development, feature, staging, production
  */
 
 import dotenv from "dotenv";
 
 /**
- * Dynamisches Laden der Environment-Datei
- * Development → .env.development
- * Production → .env
+ * Dynamisches Laden der Environment-Datei basierend auf NODE_ENV
  */
 const NODE_ENV = process.env.NODE_ENV || "development";
-const envFile = NODE_ENV === "development" ? ".env.development" : ".env";
+const envFiles = {
+  development: "config/env/.env.development",
+  feature: "config/env/.env.feature",
+  staging: "config/env/.env.staging",
+  production: "config/env/.env.production",
+};
 
+const envFile = envFiles[NODE_ENV] || "config/env/.env.development";
 dotenv.config({ path: envFile });
 
 console.log(`🔧 Loading environment from: ${envFile} (NODE_ENV: ${NODE_ENV})`);
 
 /**
- * Environment-Detection basierend auf NODE_ENV und Hostname
+ * Environment-Detection basierend auf NODE_ENV
  */
 function detectEnvironment() {
-  // Explicit gesetzt via NODE_ENV
-  if (process.env.NODE_ENV) {
+  // Explizit gesetztes NODE_ENV verwenden
+  if (process.env.NODE_ENV && envFiles[process.env.NODE_ENV]) {
     return process.env.NODE_ENV;
   }
 
-  // Development indicators
+  // Development als Fallback für lokale Entwicklung
   if (
     process.env.DB_HOST === "127.0.0.1" ||
     process.env.DB_HOST === "localhost" ||
@@ -36,14 +40,14 @@ function detectEnvironment() {
     return "development";
   }
 
-  // Production als Fallback
+  // Production als Standard-Fallback
   return "production";
 }
 
 const ENVIRONMENT = detectEnvironment();
 
 /**
- * Environment-spezifische Konfiguration
+ * Environment-spezifische Konfiguration für alle 4 Environments
  */
 const CONFIG = {
   development: {
@@ -52,36 +56,36 @@ const CONFIG = {
     DB_PORT: Number(process.env.DB_PORT) || 3306,
     DB_USER: process.env.DB_USER || "root",
     DB_PASSWORD: process.env.DB_PASSWORD || "",
-    DB_NAME: process.env.DB_NAME || "todos_main_dev",
+    DB_NAME: process.env.DB_NAME || "todos_dev",
     DB_USERS: process.env.DB_USERS || "todos_users_dev",
 
     // Server
     HTTP_PORT: Number(process.env.PORT) || 3000,
     HTTP_HOST: "127.0.0.1",
 
-    // CORS
+    // CORS - lokale Development
     CORS_ORIGINS: [
       "http://localhost:3000",
       "http://localhost:5500",
-      "http://localhost:5501", // Live Server alternative Port
+      "http://localhost:5501",
       "http://127.0.0.1:5500",
-      "http://127.0.0.1:5501", // Live Server alternative Port
+      "http://127.0.0.1:5501",
       "http://localhost:8080",
-      "http://localhost:8000", // Python HTTP Server
+      "http://localhost:8000",
     ],
 
     // Cookies
-    COOKIE_DOMAIN: undefined, // Keine Domain = akzeptiert alle (localhost, 127.0.0.1)
+    COOKIE_DOMAIN: undefined, // Keine Domain für localhost
     COOKIE_SECURE: false,
 
     // Logging
-    DEBUG: true,
-    LOG_LEVEL: "verbose",
+    DEBUG: Boolean(process.env.DEBUG) || true,
+    LOG_LEVEL: process.env.LOG_LEVEL || "verbose",
   },
 
-  production: {
+  feature: {
     // Database
-    DB_HOST: process.env.DB_HOST || "127.0.0.1",
+    DB_HOST: process.env.DB_HOST || "localhost",
     DB_PORT: Number(process.env.DB_PORT) || 3306,
     DB_USER: process.env.DB_USER,
     DB_PASSWORD: process.env.DB_PASSWORD,
@@ -89,14 +93,13 @@ const CONFIG = {
     DB_USERS: process.env.DB_USERS || "todos_users",
 
     // Server
-    HTTP_PORT: Number(process.env.PORT) || 3000,
+    HTTP_PORT: Number(process.env.PORT) || 3003,
     HTTP_HOST: "0.0.0.0",
 
-    // CORS
+    // CORS - Feature Environment
     CORS_ORIGINS: [
-      "https://lets-todo-api.dev2k.org", // ← Hier deine API-Domain eintragen
-      "https://lets-todo.dev2k.org", // ← Hier deine Frontend-Domain eintragen
-      "http://localhost:3000", // ← Für lokale Tests behalten
+      "https://lets-todo-app-feat.dev2k.org",
+      "http://localhost:3000", // Für lokale Tests
     ],
 
     // Cookies
@@ -104,33 +107,58 @@ const CONFIG = {
     COOKIE_SECURE: true,
 
     // Logging
-    DEBUG: false,
-    LOG_LEVEL: "error",
+    DEBUG: Boolean(process.env.DEBUG) || true,
+    LOG_LEVEL: process.env.LOG_LEVEL || "debug",
   },
 
   staging: {
     // Database
-    DB_HOST: process.env.DB_HOST || "127.0.0.1",
+    DB_HOST: process.env.DB_HOST || "localhost",
     DB_PORT: Number(process.env.DB_PORT) || 3306,
     DB_USER: process.env.DB_USER,
     DB_PASSWORD: process.env.DB_PASSWORD,
-    DB_NAME: process.env.DB_NAME || "todos_main_staging",
-    DB_USERS: process.env.DB_USERS || "todos_users_staging",
+    DB_NAME: process.env.DB_NAME || "todos_main",
+    DB_USERS: process.env.DB_USERS || "todos_users",
 
     // Server
-    HTTP_PORT: Number(process.env.PORT) || 3000,
+    HTTP_PORT: Number(process.env.PORT) || 3004,
     HTTP_HOST: "0.0.0.0",
 
-    // CORS
-    CORS_ORIGINS: ["https://staging-lets-todo-app.dev2k.org"],
+    // CORS - Staging Environment
+    CORS_ORIGINS: ["https://lets-todo-app-stage.dev2k.org"],
 
     // Cookies
     COOKIE_DOMAIN: ".dev2k.org",
     COOKIE_SECURE: true,
 
     // Logging
-    DEBUG: true,
-    LOG_LEVEL: "info",
+    DEBUG: Boolean(process.env.DEBUG) || false,
+    LOG_LEVEL: process.env.LOG_LEVEL || "warn",
+  },
+
+  production: {
+    // Database
+    DB_HOST: process.env.DB_HOST || "localhost",
+    DB_PORT: Number(process.env.DB_PORT) || 3306,
+    DB_USER: process.env.DB_USER,
+    DB_PASSWORD: process.env.DB_PASSWORD,
+    DB_NAME: process.env.DB_NAME || "todos_main",
+    DB_USERS: process.env.DB_USERS || "todos_users",
+
+    // Server
+    HTTP_PORT: Number(process.env.PORT) || 3002,
+    HTTP_HOST: "0.0.0.0",
+
+    // CORS - Production Environment
+    CORS_ORIGINS: ["https://lets-todo.dev2k.org"],
+
+    // Cookies
+    COOKIE_DOMAIN: ".dev2k.org",
+    COOKIE_SECURE: true,
+
+    // Logging
+    DEBUG: Boolean(process.env.DEBUG) || false,
+    LOG_LEVEL: process.env.LOG_LEVEL || "info",
   },
 };
 

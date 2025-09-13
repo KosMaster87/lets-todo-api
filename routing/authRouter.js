@@ -1,34 +1,3 @@
-/**
- * Authentifizierungs-Router
- * Verwaltet User-Registrierung, Login und Logout
- * Jeder User erhält eine     // Eventuelle Gast-Session löschen
-    if (req.cookies.guestId) {
-      const clearCookieOptions = { path: "/" };
-      if (ENV.COOKIE_DOMAIN) clearCookieOptions.domain = ENV.COOKIE_DOMAIN;
-      res.clearCookie("guestId", clearCookieOptions);
-    }
-
-    // Session-Cookie setzen
-    const cookieOptions = {
-      httpOnly: false, // Für Frontend-Zugriff
-      secure: ENV.COOKIE_SECURE, // false in Development, true in Production
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 Tage
-      path: "/",
-    };
-    
-    // SameSite nur in Production setzen (mit secure: true)
-    if (ENV.COOKIE_SECURE) {
-      cookieOptions.sameSite = "lax";
-    }
-    
-    // Domain nur setzen wenn definiert (Production), in Development weglassen
-    if (ENV.COOKIE_DOMAIN) {
-      cookieOptions.domain = ENV.COOKIE_DOMAIN;
-    }
-    
-    res.cookie("userId", user.id, cookieOptions);nk
- */
-
 // routing/authRouter.js
 import { Router } from "express";
 import bcrypt from "bcrypt";

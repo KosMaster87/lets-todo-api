@@ -1,8 +1,4 @@
-/**
- * Todos-Router
- * Verwaltet CRUD-Operationen für Todos in User- oder Gast-Sessions
- */
-
+// routing/todosRouter.js
 import { Router } from "express";
 
 const router = Router();
